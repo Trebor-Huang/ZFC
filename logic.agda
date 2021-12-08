@@ -160,7 +160,7 @@ infixr 2 _Then_ _ThusFrom_
 -- Develop boolean reflection tools.
 infixl 15 _&&_
 infixl 14 _||_
-infixr 13 _=>_
+infixr 13 _=>_ _==_
 _&&_ : Bool -> Bool -> Bool
 true && true = true
 _ && _ = false
@@ -189,6 +189,19 @@ not : Bool -> Bool
 not true = false
 not false = true
 
+not-reflect : ∀ x -> prop {ℓ} (not x) -> ¬ (prop {ℓ} x)
+not-reflect true ()
+not-reflect false _ ()
+
+_==_ : Bool -> Bool -> Bool
+true == true = true
+false == false = true
+_ == _ = false
+
+==-reflect : ∀ x y -> prop {ℓ} (x == y) -> prop {ℓ} x ≡ prop {ℓ} y
+==-reflect true true _ = refl
+==-reflect false false _ = refl
+
 data Nat : Set where
     zero : Nat
     succ : Nat -> Nat
@@ -201,7 +214,7 @@ data PVar : Nat -> Set where
 
 infixl 15 _&&&_
 infixl 14 _|||_
-infixr 13 _==>_
+infixr 13 _==>_ _<=>_
 infix 10 _⊨_ _⊢_
 
 data Formula (n : Nat) : Set where
@@ -211,6 +224,10 @@ data Formula (n : Nat) : Set where
     _&&&_ : Formula n -> Formula n -> Formula n
     _|||_ : Formula n -> Formula n -> Formula n
     _==>_ : Formula n -> Formula n -> Formula n
+    ¡_ : Formula n -> Formula n
+
+_<=>_ : ∀ {n} -> Formula n -> Formula n -> Formula n
+f <=> g = (f ==> g) &&& (g ==> f)
 
 private
     _⊨_ : {i : Nat} -> (PVar i -> Bool) -> (Formula i -> Bool)
@@ -220,6 +237,7 @@ private
     Γ ⊨ f &&& g = (Γ ⊨ f) && (Γ ⊨ g)
     Γ ⊨ f ||| g = (Γ ⊨ f) || (Γ ⊨ g)
     Γ ⊨ f ==> g = (Γ ⊨ f) => (Γ ⊨ g)
+    Γ ⊨ ¡ f = not (Γ ⊨ f)
 
     _⊢_ : {i : Nat} -> (PVar i -> Prop ℓ) -> (Formula i -> Prop ℓ)
     Γ ⊢ tt = ⊤
@@ -228,6 +246,7 @@ private
     Γ ⊢ f &&& g = (Γ ⊢ f) ∧ (Γ ⊢ g)
     Γ ⊢ f ||| g = (Γ ⊢ f) ∨ (Γ ⊢ g)
     Γ ⊢ f ==> g = (Γ ⊢ f) -> (Γ ⊢ g)
+    Γ ⊢ ¡ f = ¬ (Γ ⊢ f)
 
     Soundness : ∀ {i} (f : Formula i)
         -> ∀ {ℓ} Γ -> (\ x -> prop {ℓ} (Γ x)) ⊢ f
@@ -254,6 +273,9 @@ private
         (Soundness g Γ
             (prf (Completeness f Γ
                 (equal-equiv (cong prop (symm eqf)) _))))
+    Soundness (¡ f) Γ prf with Γ ⊨ f in eqf  -- exactly analogous to f ==> g (take g = ff)
+    ... | true = prf (Completeness f Γ (equal-equiv (cong prop (symm eqf)) _))
+    ... | false = _
 
     Completeness tt Γ prf = _
     Completeness (F x) Γ prf = prf
@@ -269,18 +291,19 @@ private
         Completeness g Γ
             (=>-reflect _ _ prf
                 (Soundness f Γ Pf))
+    Completeness (¡ f) Γ prf Pf = not-reflect _ prf (Soundness f Γ Pf)
 
     {-# REWRITE prop-decide #-}
 
-    extend : ∀ {i} -> (PVar i -> Bool) -> Bool -> (PVar (succ i) -> Bool)
+    extend : ∀ {i} {A : Set ℓ} -> (PVar i -> A) -> A -> (PVar (succ i) -> A)
     extend v b this = b
     extend v b (that x) = v x
 
-    extend-tail : ∀ {i} -> (v : PVar i -> Bool) (u : Bool)
+    extend-tail : ∀ {i} {A : Set ℓ} -> (v : PVar i -> A) (u : A)
         -> ∀ x -> extend v u (that x) ≡ v x
     extend-tail _ _ _ = refl
 
-    extend-head : ∀ {i} -> (v : PVar i -> Bool) (u : Bool)
+    extend-head : ∀ {i} {A : Set ℓ} -> (v : PVar i -> A) (u : A)
         -> extend v u this ≡ u
     extend-head _ _ = refl
 
@@ -324,17 +347,88 @@ private
     ... | inj₂ extend-false | t-reflect rewrite extend-false =
         tabulate-constant (\ t -> f (extend t false)) (π₂ t-reflect) _
 
-solve-uncurried : ∀ {i} (f : Formula i)
-    -> prop {lzero} (tabulate (_⊨ f))
-    -> (Γ : PVar i -> Prop ℓ) -> Γ ⊢ f
-solve-uncurried f t Γ = Completeness f _ aux
-    where
-        aux : prop {ℓ} ((\ v -> decide (Γ v)) ⊨ f)
-        aux rewrite tabulate-constant (_⊨ f) t \ v -> decide (Γ v) = _
+    solve-uncurried : ∀ {i} (f : Formula i)
+        -> prop {lzero} (tabulate (_⊨ f))
+        -> (Γ : PVar i -> Prop ℓ) -> Γ ⊢ f
+    solve-uncurried f t Γ = Completeness f _ aux
+        where
+            aux : prop {ℓ} ((\ v -> decide (Γ v)) ⊨ f)
+            aux rewrite tabulate-constant (_⊨ f) t \ v -> decide (Γ v) = _
+
+    -- Now we develop tools to curry it.
+    ext-app : ∀ {i} {T : PVar (succ i) -> Set ℓ} {Obj : (∀ v -> T v) -> Prop ℓ'}
+        (t : T this) (args : ∀ v -> T (that v))
+        -> ∀ v -> T v
+    ext-app t args this = t
+    ext-app t args (that v) = args v
+
+    _===>_ : ∀ {i} (T : PVar i -> Set ℓ) (Obj : (∀ v -> T v) -> Prop ℓ')
+        -> Prop (ℓ ⊔ ℓ')
+    _===>_ {ℓ = ℓ} {i = zero} T Obj = ∀ {_ : ⊤ {ℓ}} -> Obj \ ()
+        -- the implicit parameter to modulate universe levels
+    _===>_ {ℓ = ℓ} {ℓ' = ℓ'} {i = succ i} T Obj =
+        (t : T this) -> (\ v -> T (that v)) ===> \ args ->
+            Obj (ext-app {Obj = Obj} t args)
+
+    curry : ∀ {i} (T : PVar i -> Set ℓ) (Obj : (∀ v -> T v) -> Prop ℓ')
+        -> (∀ Γ -> Obj Γ) -> T ===> Obj
+    curry {i = zero} T Obj f = f \ ()
+    curry {i = succ i} T Obj f t = curry {i = i}
+        (\ z -> T (that z))
+        (\ args -> Obj (ext-app {Obj = Obj} t args)) \ Γ -> f (ext-app {Obj = Obj} t Γ)
+
+    solve-curried : ∀ {i} (f : Formula i)
+        -> prop {lzero} (tabulate (_⊨ f))
+        -> (\ _ -> Prop ℓ) ===> (_⊢ f)
+    solve-curried f t = curry (\ _ -> Prop _) _
+        (solve-uncurried f t)
+
+    -- We can improve this even further.
+    -- We can get rid of the de-bruijn indexing.
+    -- But the distinction between Prop and Set is a bit tricky.
+    data _≤_ : Nat -> Nat -> Prop where
+        𝕫 : ∀ {m} -> m ≤ m
+        𝕤 : ∀ {m n} -> m ≤ n -> m ≤ (succ n)
+
+    ≤-succ : ∀ m n -> succ m ≤ succ n -> m ≤ n
+    ≤-succ m .m 𝕫 = 𝕫
+    ≤-succ m (succ n) (𝕤 r) = 𝕤 (≤-succ m n r)
+
+    var-seq : (A : Set ℓ) (i j : Nat) (_ : j ≤ i) -> Set ℓ
+    var-seq A i zero _ = A
+    var-seq A i@(succ i') (succ j) r = Formula i -> var-seq A i j (≤-succ j (succ i') (𝕤 r))
+
+    there : (i : Nat) -> PVar (succ i)
+    there zero = this
+    there (succ i) = that (there i)
+
+    here : (i : Nat) -> PVar i -> PVar (succ i)
+    here _ this = this
+    here _ (that v) = that (here _ v)
+
+    var-gen : (i j : Nat) (_ : j ≤ i) -> PVar (succ i)
+    var-gen i zero r = there i
+    var-gen (succ i') (succ j) r = here (succ i') (var-gen i' j (≤-succ j i' r))
+
+    formula-seq : (i j : Nat) (r : j ≤ i)
+        -> var-seq (Formula i) i j r
+        -> Formula i
+    formula-seq i zero _ f = f
+    formula-seq (succ i) (succ j) r f =
+        formula-seq (succ i) j (≤-succ j (succ i) (𝕤 r))
+            (f (F (var-gen i j (≤-succ j i r))))
+
+Formula! : (i : Nat) -> Set
+Formula! i = var-seq (Formula i) i i 𝕫
+
+solve : ∀ i (f : Formula! i)
+    -> {_ : prop {lzero} (tabulate (_⊨ (formula-seq i i 𝕫 f)))}
+    -> (\ _ -> Prop ℓ) ===> (_⊢ (formula-seq i i 𝕫 f))
+solve i f {t} = solve-curried (formula-seq i i 𝕫 f) t
 
 P∨P : (P : Prop ℓ) -> P ∨ P ≡ P
 P∨P P = equiv-equal
-    (solve-uncurried {i = 1}
-        ((F this ||| F this ==> F this) &&& (F this ==> F this ||| F this)) _ \ _ -> P)
+    (solve 1 (\ P -> (P ||| P <=> P)) P)
 
 -- TODO make a macro for this.
+-- We also want better error messages.
