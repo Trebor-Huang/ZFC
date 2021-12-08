@@ -241,10 +241,10 @@ abstract
     private
         Pairing-> : z ∈ ⟨ x , y ⟩ -> (z ≗ x) ∨ (z ≗ y)
         Pairing-> (exists a [ a∈𝟚 , pairing ]) with 𝟚-boolean {x = a} a∈𝟚
-        Pairing-> (exists .∅ [ a∈𝟚 , ι₁ [ _ , z≗x ] ]) | inj₁ refl = ι₁ z≗x
-        Pairing-> (exists .∅ [ a∈𝟚 , ι₂ [ ∅≗𝟙 , _ ] ]) | inj₁ refl = ex-falso (∅≢𝟙 (≗-≡ ∅≗𝟙))
-        Pairing-> (exists .𝟙 [ a∈𝟚 , ι₁ [ 𝟙≗∅ , _ ] ]) | inj₂ refl = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
-        Pairing-> (exists .𝟙 [ a∈𝟚 , ι₂ [ _ , z≗y ] ]) | inj₂ refl = ι₂ z≗y
+        Pairing-> (exists ∅ [ a∈𝟚 , ι₁ [ _ , z≗x ] ]) | inj₁ refl = ι₁ z≗x
+        Pairing-> (exists ∅ [ a∈𝟚 , ι₂ [ ∅≗𝟙 , _ ] ]) | inj₁ refl = ex-falso (∅≢𝟙 (≗-≡ ∅≗𝟙))
+        Pairing-> (exists 𝟙 [ a∈𝟚 , ι₁ [ 𝟙≗∅ , _ ] ]) | inj₂ refl = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
+        Pairing-> (exists 𝟙 [ a∈𝟚 , ι₂ [ _ , z≗y ] ]) | inj₂ refl = ι₂ z≗y
 
         Pairing<- : (z ≗ x) ∨ (z ≗ y) -> z ∈ ⟨ x , y ⟩
         Pairing<- (ι₁ refl𝕍)
@@ -258,15 +258,9 @@ Pairing = equiv-equal [ Pairing-> , Pairing<- ]
 {-# REWRITE Pairing #-}
 
 Pairing-≡ : z ∈ ⟨ x , y ⟩ -> (z ≡ x) ⊎ (z ≡ y)
-Pairing-≡ {z = z} {x = x} {y = y} i with truth (z ≗ x)
-... | inj₁ z≗x = inj₁ (≗-≡ (≡-true z≗x))
-... | inj₂ z≠x with truth (z ≗ y)
-... | inj₁ z≗y = inj₂ (≗-≡ (≡-true z≗y))
-... | inj₂ z≠y = magic (contra i)
-    where
-        contra : (z ≗ x) ∨ (z ≗ y) -> ⊥ {lzero}
-        contra (ι₁ z≗x) rewrite z≠x = z≗x
-        contra (ι₂ z≗y) rewrite z≠y = z≗y
+Pairing-≡ {z = z} {x = x} {y = y} i with ∨-oracle (true-≡ i)
+... | inj₁ l = inj₁ (≗-≡ (≡-true l))
+... | inj₂ r = inj₂ (≗-≡ (≡-true r))
 
 -- For example, 𝟚 is equal to ⟨ ∅ , 𝟙 ⟩.
 𝟚≡⟨∅,𝟙⟩ : 𝟚 ≡ ⟨ ∅ , 𝟙 ⟩
@@ -282,8 +276,8 @@ Pairing-≡ {z = z} {x = x} {y = y} i with truth (z ≗ x)
         zag .(𝒫 ∅) (ι₂ refl𝕍) i = i
 
 -- Pairs are unordered.
-Pair-unordered : ⟨ x , y ⟩ ≡ ⟨ y , x ⟩
-Pair-unordered {x = x} {y = y} = Extensional \ z ->
+Pair-unordered : ∀ x y -> ⟨ x , y ⟩ ≡ ⟨ y , x ⟩
+Pair-unordered x y = Extensional \ z ->
     equiv-equal [ zig x y z , zig y x z ]
     where
         zig : ∀ x y z -> z ∈ ⟨ x , y ⟩ -> z ∈ ⟨ y , x ⟩
@@ -293,12 +287,43 @@ Pair-unordered {x = x} {y = y} = Extensional \ z ->
 -- We have a criterion for pair equality.
 -- To prove that cleanly, we first develop some tools.
 private
-    Pair-equal-left : ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≗ z) ∨ (x ≗ w)
-    Pair-equal-left {x} {y} {z} {w} eq 
+    Pair-equal-left : ∀ x y z w -> ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≗ z) ∨ (x ≗ w)
+    Pair-equal-left x y z w eq 
         = equal-equiv (Extensional-converse eq x) (ι₁ refl𝕍)
 
-Pair-equal : ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≡ z) * (y ≡ w) ⊎ (x ≡ w) * (y ≡ z)
-Pair-equal {x} {y} {z} {w} eq = {!   !}
+    Pair-equal-right : ∀ x y z w -> ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (y ≗ w) ∨ (y ≗ z)
+    Pair-equal-right x y z w eq
+        rewrite Pair-unordered x y rewrite Pair-unordered z w
+            = Pair-equal-left _ _ _ _ eq
+
+    Pair-equal-equiv : ∀ x y z w -> ⟨ x , y ⟩ ≡ ⟨ z , w ⟩
+        -> (x ≗ z) ∧ (y ≗ w) ∨ (x ≗ w) ∧ (y ≗ z)
+    Pair-equal-equiv x y z w eq
+        with Pair-equal-left _ _ _ _ eq
+        | Pair-equal-right _ _ _ _ eq
+    ... | ι₁ xz | ι₁ yw = ι₁ [ xz , yw ]
+    ... | ι₂ xw | ι₂ yz = ι₂ [ xw , yz ]
+    ... | ι₁ refl𝕍 | ι₂ refl𝕍 = ι₁ [ refl𝕍 , xw ]
+        where
+            xw : x ≗ w
+            xw with P∨P _
+                (equal-equiv
+                    (symm (Extensional-converse eq w))
+                        (ι₂ refl𝕍))
+            ... | refl𝕍 = refl𝕍
+    ... | ι₂ refl𝕍 | ι₁ refl𝕍 = ι₂ [ refl𝕍 , yz ]
+        where
+            yz : y ≗ z
+            yz with P∨P _
+                (equal-equiv
+                    (symm (Extensional-converse eq z))
+                        (ι₁ refl𝕍))
+            ... | refl𝕍 = refl𝕍
+
+Pair-equal : ∀ x y z w -> ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≡ z) * (y ≡ w) ⊎ (x ≡ w) * (y ≡ z)
+Pair-equal x y z w eq with ∨-oracle (true-≡ (Pair-equal-equiv x y z w eq))
+... | inj₁ l = let (ll , lr) = ∧-oracle l in inj₁ (≗-≡ (≡-true ll) , ≗-≡ (≡-true lr))
+... | inj₂ r = let (rl , rr) = ∧-oracle r in inj₂ (≗-≡ (≡-true rl) , ≗-≡ (≡-true rr))
 
 -- Singletons can be alternatively defined as unordered pairs.
 singleton-pair : ⟦ x ⟧ ≡ ⟨ x , x ⟩
@@ -306,15 +331,13 @@ singleton-pair {x} = Extensional \ z ->
     equiv-equal
     -- Goal
     --    ((z ⊆ x) ∧ (z ≗ x) <-> (z ≗ x) ∨ (z ≗ x))
-    -- We add the condition that (z ≗ x) implies (z ⊆ x), to make this
+    -- We hook the condition that (z ≗ x) implies (z ⊆ x), to make this
     -- a propositional tautology.
         (solve 2 (\ p q ->
             (q ==> p) ==> (p &&& q <=> q ||| q))
             (z ⊆ x) (z ≗ x)  -- this instantiates p and q
             \ { refl𝕍 i -> i })
-            -- then we add our condition that (z ≗ x) implies (z ⊆ x)
-
--- [ (\ { [ _ , i ] -> ι₁ i }) , (\ { (ι₁ refl𝕍) -> [ (\ i -> i) , refl𝕍 ] ; (ι₂ refl𝕍) -> [ (\ i -> i) , refl𝕍 ]}) ]
+            -- then we prove the added condition
 
 -- Then, we can have Kuratowski pairs.
 ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
