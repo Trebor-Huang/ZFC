@@ -8,6 +8,7 @@ open import Agda.Primitive
 variable
     ℓ ℓ₁ ℓ₂ ℓ₃ ℓ₄ ℓ₅ ℓ₆ ℓ₇ ℓ₈ ℓ' ℓ'' : Level
 
+-- The familiar constructs.
 infixl 10 _∧_ _*_ _,_
 infixl 9 _∨_ _⊎_
 data _∨_ (P : Prop ℓ) (Q : Prop ℓ') : Prop (ℓ ⊔ ℓ') where
@@ -27,6 +28,7 @@ record _*_ (P : Set ℓ) (Q : Set ℓ') : Set (ℓ ⊔ ℓ') where
     field
         proj₁ : P
         proj₂ : Q
+-- Note that Exists is a proposition.
 data Exists (A : Set ℓ) (P : A -> Prop ℓ') : Prop (ℓ ⊔ ℓ') where
     exists : (a : A) -> P a -> Exists A P
 syntax Exists A (\x -> P) = ∃[ x ∈ A ] P
@@ -43,8 +45,9 @@ ex-falso ()
 magic : {A : Set ℓ'} -> ⊥ {ℓ} -> A
 magic ()
 record ⊤ {ℓ} : Prop ℓ where
-    constructor trivial
+    constructor trivial  -- This should never appear, as it can be inferred.
 
+-- Equality.
 transport : {A B : Set ℓ} -> A ≡ B -> A -> B
 transport refl a = a
 
@@ -58,6 +61,7 @@ symm refl = refl
 trans : {A : Set ℓ} {a b c : A} -> a ≡ b -> b ≡ c -> a ≡ c
 trans refl refl = refl
 
+-- Booleans, used for reflection.
 data Bool : Set where
     true : Bool
     false : Bool
@@ -72,17 +76,6 @@ prop-≡ {b = true} _ = refl
 postulate
     truth : (P : Prop ℓ) -> (P ≡ ⊤) ⊎ (P ≡ ⊥)
 
-abstract
-    decide : Prop ℓ -> Bool
-    decide P with truth P
-    ... | inj₁ _ = true
-    ... | inj₂ _ = false
-
-    prop-decide : (P : Prop ℓ) -> prop (decide P) ≡ P
-    prop-decide P with truth P
-    ... | inj₁ eq = symm eq
-    ... | inj₂ eq = symm eq
-
 equal-equiv : {P Q : Prop ℓ} -> P ≡ Q -> P -> Q
 equal-equiv refl p = p
 
@@ -92,18 +85,6 @@ equiv-equal {P = P} {Q = Q} [ P->Q , Q->P ] with truth P | truth Q
 ... | inj₁ refl | inj₂ refl = magic (P->Q _)
 ... | inj₂ refl | inj₁ refl = magic (Q->P _)
 ... | inj₂ refl | inj₂ refl = refl
-
-abstract
-    decide-prop : ∀ b -> decide {lzero} (prop b) ≡ b
-    decide-prop true with truth {lzero} ⊤
-    ... | inj₁ _ = refl
-    ... | inj₂ eq = magic (equal-equiv eq _)
-    decide-prop false with truth {lzero} ⊥
-    ... | inj₁ eq = magic (equal-equiv (symm eq) _)
-    ... | inj₂ _ = refl
-
-≡-true : {P : Prop ℓ} -> P ≡ ⊤ -> P
-≡-true refl = _
 
 infixr 15 ¬_
 ¬_ : Prop ℓ -> Prop ℓ
@@ -119,6 +100,12 @@ infixr 15 ¬_
 ¬¬P≡P {P = P} with truth P 
 ... | inj₁ refl = equiv-equal [ (\ _ -> _) , (\ _ z -> z _) ]
 ... | inj₂ refl = equiv-equal [ (\ f -> f \ z -> z) , (\ z f -> f z) ]
+
+≡-true : {P : Prop ℓ} -> P ≡ ⊤ -> P
+≡-true refl = _
+
+true-≡ : {P : Prop ℓ} -> P -> P ≡ ⊤
+true-≡ p = equiv-equal [ (\ _ -> _) , (\ _ -> p) ]
 
 false-≡ : ∀ {P : Prop ℓ} -> ¬ P -> P ≡ ⊥
 false-≡ ¬P = equiv-equal [ ¬P , (\ ()) ]
@@ -208,6 +195,8 @@ data Nat : Set where
 
 {-# BUILTIN NATURAL Nat #-}
 
+-- Now we can start to make a solver.
+-- First, to represent propositional variables, we use de Bruijn indices.
 data PVar : Nat -> Set where
     this : {i : Nat} -> PVar (succ i)
     that : {i : Nat} -> PVar i -> PVar (succ i)
@@ -216,7 +205,7 @@ infixl 15 _&&&_
 infixl 14 _|||_
 infixr 13 _==>_ _<=>_
 infix 10 _⊨_ _⊢_
-
+-- The formula syntax representation.
 data Formula (n : Nat) : Set where
     tt : Formula n
     ff : Formula n
@@ -226,19 +215,16 @@ data Formula (n : Nat) : Set where
     _==>_ : Formula n -> Formula n -> Formula n
     ¡_ : Formula n -> Formula n
 
+-- <=> is not a constructor, because in later developments, we
+-- prefer (P ≡ Q) over (P -> Q) ∧ (Q -> P).
+-- So equivalences will be proved through implication.
 _<=>_ : ∀ {n} -> Formula n -> Formula n -> Formula n
 f <=> g = (f ==> g) &&& (g ==> f)
 
 private
-    _⊨_ : {i : Nat} -> (PVar i -> Bool) -> (Formula i -> Bool)
-    Γ ⊨ tt = true
-    Γ ⊨ ff = false
-    Γ ⊨ F x = Γ x
-    Γ ⊨ f &&& g = (Γ ⊨ f) && (Γ ⊨ g)
-    Γ ⊨ f ||| g = (Γ ⊨ f) || (Γ ⊨ g)
-    Γ ⊨ f ==> g = (Γ ⊨ f) => (Γ ⊨ g)
-    Γ ⊨ ¡ f = not (Γ ⊨ f)
-
+    -- We define truth-value models.
+    -- Crucially, we use Γ ⊢ f to mean that f is true, *whatever* Γ is.
+    -- In contrast, the usual meaning of Γ ⊢ f is that f is true whenever Γ is.
     _⊢_ : {i : Nat} -> (PVar i -> Prop ℓ) -> (Formula i -> Prop ℓ)
     Γ ⊢ tt = ⊤
     Γ ⊢ ff = ⊥
@@ -248,6 +234,16 @@ private
     Γ ⊢ f ==> g = (Γ ⊢ f) -> (Γ ⊢ g)
     Γ ⊢ ¡ f = ¬ (Γ ⊢ f)
 
+    _⊨_ : {i : Nat} -> (PVar i -> Bool) -> (Formula i -> Bool)
+    Γ ⊨ tt = true
+    Γ ⊨ ff = false
+    Γ ⊨ F x = Γ x
+    Γ ⊨ f &&& g = (Γ ⊨ f) && (Γ ⊨ g)
+    Γ ⊨ f ||| g = (Γ ⊨ f) || (Γ ⊨ g)
+    Γ ⊨ f ==> g = (Γ ⊨ f) => (Γ ⊨ g)
+    Γ ⊨ ¡ f = not (Γ ⊨ f)
+
+    -- With this interpretation, soundness and completeness are mutually recursive.
     Soundness : ∀ {i} (f : Formula i)
         -> ∀ {ℓ} Γ -> (\ x -> prop {ℓ} (Γ x)) ⊢ f
         -> prop {ℓ} (Γ ⊨ f)
@@ -293,8 +289,9 @@ private
                 (Soundness f Γ Pf))
     Completeness (¡ f) Γ prf Pf = not-reflect _ prf (Soundness f Γ Pf)
 
-    {-# REWRITE prop-decide #-}
-
+    -- Now we need some auxiliary functions to deal with functions
+    -- of type (PVar i -> A), which is equivalent to Data.Vector.Functional
+    -- in the standard library.
     extend : ∀ {i} {A : Set ℓ} -> (PVar i -> A) -> A -> (PVar (succ i) -> A)
     extend v b this = b
     extend v b (that x) = v x
@@ -322,40 +319,68 @@ private
             aux-false this = eq
             aux-false (that y) = refl
 
-    tabulate : ∀ {i}
+    -- Since _⊢_ has the unconventional meaning, we can represent
+    -- the truth value of Γ ⊢ f as a conjunction of all the cases
+    -- of Γ.
+    conjunct : ∀ {i}
         -> ((PVar i -> Bool) -> Bool) -> Bool
-    tabulate {i = zero} f = f (λ ())
-    tabulate {i = succ i} f =
-        (tabulate {i} \ t -> f (extend t true)) &&
-        (tabulate {i} \ t -> f (extend t false))
+    conjunct {i = zero} f = f (λ ())
+    conjunct {i = succ i} f =
+        (conjunct {i} \ t -> f (extend t true)) &&
+        (conjunct {i} \ t -> f (extend t false))
 
-    tabulate-constant : ∀ {i} (f : (PVar i -> Bool) -> Bool)
-        -> prop {lzero} (tabulate f)
+    -- If the large conjunction is true, then every term must be true.
+    conjunct-constant : ∀ {i} (f : (PVar i -> Bool) -> Bool)
+        -> prop {lzero} (conjunct f)
         -> ∀ v -> f v ≡ true
-    tabulate-constant {i = zero} f t v = aux
+    conjunct-constant {i = zero} f t v = aux
         where
             v-trivial : v ≡ \ ()
             v-trivial = transport (symm funext) \ ()
             aux : f v ≡ true
             aux rewrite v-trivial = prop-≡ t
-    tabulate-constant {i = succ i} f t v with extend-case v |
+    conjunct-constant {i = succ i} f t v with extend-case v |
         &&-reflect
-            (tabulate {i} \ _ -> f _)
-            (tabulate {i} \ _ -> f _) t
+            (conjunct {i} \ _ -> f _)
+            (conjunct {i} \ _ -> f _) t
     ... | inj₁ extend-true | t-reflect rewrite extend-true =
-        tabulate-constant (\ t -> f (extend t true)) (π₁ t-reflect) _
+        conjunct-constant (\ t -> f (extend t true)) (π₁ t-reflect) _
     ... | inj₂ extend-false | t-reflect rewrite extend-false =
-        tabulate-constant (\ t -> f (extend t false)) (π₂ t-reflect) _
+        conjunct-constant (\ t -> f (extend t false)) (π₂ t-reflect) _
 
+-- At this point, we pause and turn to a boolean version of the truth oracle.
+-- decide is inverse to prop.
+abstract
+    decide : Prop ℓ -> Bool
+    decide P with truth P
+    ... | inj₁ _ = true
+    ... | inj₂ _ = false
+
+    prop-decide : (P : Prop ℓ) -> prop (decide P) ≡ P
+    prop-decide P with truth P
+    ... | inj₁ eq = symm eq
+    ... | inj₂ eq = symm eq
+
+    decide-prop : ∀ b -> decide {lzero} (prop b) ≡ b
+    decide-prop true with truth {lzero} ⊤
+    ... | inj₁ _ = refl
+    ... | inj₂ eq = magic (equal-equiv eq _)
+    decide-prop false with truth {lzero} ⊥
+    ... | inj₁ eq = magic (equal-equiv (symm eq) _)
+    ... | inj₂ _ = refl
+{-# REWRITE prop-decide decide-prop #-}
+
+-- Let's continue the develop the main solver.
+private
     solve-uncurried : ∀ {i} (f : Formula i)
-        -> prop {lzero} (tabulate (_⊨ f))
+        -> prop {lzero} (conjunct (_⊨ f))
         -> (Γ : PVar i -> Prop ℓ) -> Γ ⊢ f
     solve-uncurried f t Γ = Completeness f _ aux
         where
             aux : prop {ℓ} ((\ v -> decide (Γ v)) ⊨ f)
-            aux rewrite tabulate-constant (_⊨ f) t \ v -> decide (Γ v) = _
+            aux rewrite conjunct-constant (_⊨ f) t \ v -> decide (Γ v) = _
 
-    -- Now we develop tools to curry it.
+    -- Now we develop tools to curry so as to make it more usable.
     ext-app : ∀ {i} {T : PVar (succ i) -> Set ℓ} {Obj : (∀ v -> T v) -> Prop ℓ'}
         (t : T this) (args : ∀ v -> T (that v))
         -> ∀ v -> T v
@@ -378,7 +403,7 @@ private
         (\ args -> Obj (ext-app {Obj = Obj} t args)) \ Γ -> f (ext-app {Obj = Obj} t Γ)
 
     solve-curried : ∀ {i} (f : Formula i)
-        -> prop {lzero} (tabulate (_⊨ f))
+        -> prop {lzero} (conjunct (_⊨ f))
         -> (\ _ -> Prop ℓ) ===> (_⊢ f)
     solve-curried f t = curry (\ _ -> Prop _) _
         (solve-uncurried f t)
@@ -398,6 +423,7 @@ private
     var-seq A i zero _ = A
     var-seq A i@(succ i') (succ j) r = Formula i -> var-seq A i j (≤-succ j (succ i') (𝕤 r))
 
+    -- An alternate set of PVar constructors.
     there : (i : Nat) -> PVar (succ i)
     there zero = this
     there (succ i) = that (there i)
@@ -410,6 +436,7 @@ private
     var-gen i zero r = there i
     var-gen (succ i') (succ j) r = here (succ i') (var-gen i' j (≤-succ j i' r))
 
+    -- We fill in the dBI's in the right order.
     formula-seq : (i j : Nat) (r : j ≤ i)
         -> var-seq (Formula i) i j r
         -> Formula i
@@ -421,14 +448,35 @@ private
 Formula! : (i : Nat) -> Set
 Formula! i = var-seq (Formula i) i i 𝕫
 
+-- The main solver. The prop is made implicit, because ⊤ can always be inferred.
 solve : ∀ i (f : Formula! i)
-    -> {_ : prop {lzero} (tabulate (_⊨ (formula-seq i i 𝕫 f)))}
+    -> {_ : prop {lzero} (conjunct (_⊨ (formula-seq i i 𝕫 f)))}
     -> (\ _ -> Prop ℓ) ===> (_⊢ (formula-seq i i 𝕫 f))
 solve i f {t} = solve-curried (formula-seq i i 𝕫 f) t
 
-P∨P : (P : Prop ℓ) -> P ∨ P ≡ P
-P∨P P = equiv-equal
-    (solve 1 (\ P -> (P ||| P <=> P)) P)
+-- Example usage:
+P∨P : (P : Prop ℓ) -> P ∨ P -> P
+P∨P P = solve 1  -- We invoke the solver with 1 free variable.
+    (\ P -> (P ||| P ==> P))  -- The formula.
+    -- We can freely choose the bound name P thanks to our previous work.
+    -- Also, here is an implicit variable, calculated to be of type ⊤,
+    -- because the solver decided that the formula above is a tautology.
+    P  -- Now we instantiate the propositional variable to P.
 
 -- TODO make a macro for this.
 -- We also want better error messages.
+
+-- With our strong version of LEM, _∨_ is also decidable.
+∨-oracle : ∀ {P Q : Prop ℓ} -> (P ∨ Q ≡ ⊤) -> (P ≡ ⊤) ⊎ (Q ≡ ⊤)
+∨-oracle {P = P} {Q = Q} PQ with truth P | truth Q
+... | inj₁ p | _ = inj₁ p
+... | _ | inj₁ q = inj₂ q
+... | inj₂ ¬p | inj₂ ¬q rewrite ¬p rewrite ¬q = magic (P∨P ⊥ (≡-true PQ))
+
+-- Not much of an oracle, but anyway to keep the symmetry.
+∧-oracle : ∀ {P Q : Prop ℓ} -> (P ∧ Q ≡ ⊤) -> (P ≡ ⊤) * (Q ≡ ⊤)
+∧-oracle {P = P} {Q = Q} PQ with truth P | truth Q
+... | inj₁ p | inj₁ q = p , q
+... | _ | inj₂ ¬q rewrite ¬q = magic (≡-true PQ .π₂)
+... | inj₂ ¬p | _ rewrite ¬p = magic (≡-true PQ .π₁)
+ 
