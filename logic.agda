@@ -1,4 +1,4 @@
-{-# OPTIONS --prop --rewriting --allow-unsolved-meta #-}
+{-# OPTIONS --prop --rewriting #-}
 
 module logic where
 open import Agda.Builtin.Equality
@@ -21,6 +21,7 @@ record _∧_ (P : Prop ℓ) (Q : Prop ℓ') : Prop (ℓ ⊔ ℓ') where
     field
         π₁ : P
         π₂ : Q
+open _∧_
 record _*_ (P : Set ℓ) (Q : Set ℓ') : Set (ℓ ⊔ ℓ') where
     constructor _,_
     field
@@ -198,35 +199,35 @@ data PVar : Nat -> Set where
     this : {i : Nat} -> PVar (succ i)
     that : {i : Nat} -> PVar i -> PVar (succ i)
 
-infixl 15 _F&_
-infixl 14 _F|_
-infixr 13 _F>_
+infixl 15 _&&&_
+infixl 14 _|||_
+infixr 13 _==>_
 infix 10 _⊨_ _⊢_
 
 data Formula (n : Nat) : Set where
     tt : Formula n
     ff : Formula n
     F : PVar n -> Formula n
-    _F&_ : Formula n -> Formula n -> Formula n
-    _F|_ : Formula n -> Formula n -> Formula n
-    _F>_ : Formula n -> Formula n -> Formula n
+    _&&&_ : Formula n -> Formula n -> Formula n
+    _|||_ : Formula n -> Formula n -> Formula n
+    _==>_ : Formula n -> Formula n -> Formula n
 
 private
     _⊨_ : {i : Nat} -> (PVar i -> Bool) -> (Formula i -> Bool)
     Γ ⊨ tt = true
     Γ ⊨ ff = false
     Γ ⊨ F x = Γ x
-    Γ ⊨ f F& g = (Γ ⊨ f) && (Γ ⊨ g)
-    Γ ⊨ f F| g = (Γ ⊨ f) || (Γ ⊨ g)
-    Γ ⊨ f F> g = (Γ ⊨ f) => (Γ ⊨ g)
+    Γ ⊨ f &&& g = (Γ ⊨ f) && (Γ ⊨ g)
+    Γ ⊨ f ||| g = (Γ ⊨ f) || (Γ ⊨ g)
+    Γ ⊨ f ==> g = (Γ ⊨ f) => (Γ ⊨ g)
 
     _⊢_ : {i : Nat} -> (PVar i -> Prop ℓ) -> (Formula i -> Prop ℓ)
     Γ ⊢ tt = ⊤
     Γ ⊢ ff = ⊥
     Γ ⊢ F x = Γ x
-    Γ ⊢ f F& g = (Γ ⊢ f) ∧ (Γ ⊢ g)
-    Γ ⊢ f F| g = (Γ ⊢ f) ∨ (Γ ⊢ g)
-    Γ ⊢ f F> g = (Γ ⊢ f) -> (Γ ⊢ g)
+    Γ ⊢ f &&& g = (Γ ⊢ f) ∧ (Γ ⊢ g)
+    Γ ⊢ f ||| g = (Γ ⊢ f) ∨ (Γ ⊢ g)
+    Γ ⊢ f ==> g = (Γ ⊢ f) -> (Γ ⊢ g)
 
     Soundness : ∀ {i} (f : Formula i)
         -> ∀ {ℓ} Γ -> (\ x -> prop {ℓ} (Γ x)) ⊢ f
@@ -237,16 +238,16 @@ private
 
     Soundness tt Γ prf = _
     Soundness (F x) Γ prf = prf
-    Soundness (f F& g) Γ [ Pf , Pg ] with Γ ⊨ f in eqf | Γ ⊨ g in eqg
+    Soundness (f &&& g) Γ [ Pf , Pg ] with Γ ⊨ f in eqf | Γ ⊨ g in eqg
     ... | true | true = _
     ... | true | false = equal-equiv (cong prop eqg) (Soundness g Γ Pg)
     ... | false | _ = equal-equiv (cong prop eqf) (Soundness f Γ Pf)
-    Soundness (f F| g) Γ prf with Γ ⊨ f in eqf | Γ ⊨ g in eqg
+    Soundness (f ||| g) Γ prf with Γ ⊨ f in eqf | Γ ⊨ g in eqg
     ... | true | _ = _
     ... | false | true = _
-    Soundness (f F| g) Γ (ι₁ Pf) | false | false = equal-equiv (cong prop eqf) (Soundness f Γ Pf)
-    Soundness (f F| g) Γ (ι₂ Pg) | false | false = equal-equiv (cong prop eqg) (Soundness g Γ Pg)
-    Soundness (f F> g) Γ prf with Γ ⊨ f in eqf | Γ ⊨ g in eqg
+    Soundness (f ||| g) Γ (ι₁ Pf) | false | false = equal-equiv (cong prop eqf) (Soundness f Γ Pf)
+    Soundness (f ||| g) Γ (ι₂ Pg) | false | false = equal-equiv (cong prop eqg) (Soundness g Γ Pg)
+    Soundness (f ==> g) Γ prf with Γ ⊨ f in eqf | Γ ⊨ g in eqg
     ... | false | _ = _
     ... | true | true = _
     ... | true | false = equal-equiv (cong prop eqg)
@@ -256,34 +257,24 @@ private
 
     Completeness tt Γ prf = _
     Completeness (F x) Γ prf = prf
-    Completeness (f F& g) Γ prf =
-        [ Completeness f Γ (_∧_.π₁ prf') , Completeness g Γ (_∧_.π₂ prf') ]
+    Completeness (f &&& g) Γ prf =
+        [ Completeness f Γ (π₁ prf') , Completeness g Γ (π₂ prf') ]
         where
             prf' : prop (Γ ⊨ f) ∧ prop (Γ ⊨ g)
             prf' = &&-reflect _ _ prf
-    Completeness (f F| g) Γ prf with ||-reflect _ _ prf
+    Completeness (f ||| g) Γ prf with ||-reflect _ _ prf
     ... | ι₁ prf' = ι₁ (Completeness f Γ prf')
     ... | ι₂ prf' = ι₂ (Completeness g Γ prf')
-    Completeness (f F> g) Γ prf Pf =
+    Completeness (f ==> g) Γ prf Pf =
         Completeness g Γ
             (=>-reflect _ _ prf
                 (Soundness f Γ Pf))
 
     {-# REWRITE prop-decide #-}
 
-    set : ∀ {i} -> (PVar i -> Bool) -> Bool -> (PVar i -> Bool)
-    set v b this = b
-    set v b (that x) = v (that x)
-
     extend : ∀ {i} -> (PVar i -> Bool) -> Bool -> (PVar (succ i) -> Bool)
     extend v b this = b
     extend v b (that x) = v x
-
-    var-elim : ∀ {i} -> (v : PVar (succ i) -> Bool) (u : Bool)
-        -> v this ≡ u
-        -> (v ≡ set v u)
-    var-elim v .(v this) refl = transport (symm funext)
-        \ { this -> refl ; (that x) -> refl }
 
     extend-tail : ∀ {i} -> (v : PVar i -> Bool) (u : Bool)
         -> ∀ x -> extend v u (that x) ≡ v x
@@ -293,23 +284,27 @@ private
         -> extend v u this ≡ u
     extend-head _ _ = refl
 
+    extend-case : ∀ {i} -> (v : PVar (succ i) -> Bool)
+        -> (v ≡ extend (\ x -> v (that x)) true)
+        ⊎ (v ≡ extend (\ x -> v (that x)) false)
+    extend-case v with v this in eq
+    ... | true = inj₁ (transport (symm funext) aux-true)
+        where
+            aux-true : ∀ y -> v y ≡ extend (\ x -> v (that x)) true y
+            aux-true this = eq
+            aux-true (that y) = refl
+    ... | false = inj₂ (transport (symm funext) aux-false)
+        where
+            aux-false : ∀ y -> v y ≡ extend (\ x -> v (that x)) false y
+            aux-false this = eq
+            aux-false (that y) = refl
+
     tabulate : ∀ {i}
         -> ((PVar i -> Bool) -> Bool) -> Bool
     tabulate {i = zero} f = f (λ ())
     tabulate {i = succ i} f =
         (tabulate {i} \ t -> f (extend t true)) &&
         (tabulate {i} \ t -> f (extend t false))
-
-    var-elim-case : ∀ {i} -> (v : PVar (succ i) -> Bool)
-        -> (v ≡ set v true) ⊎ (v ≡ set v false)
-    var-elim-case v with v this in eq
-    ... | true = inj₁ (var-elim v true eq)
-    ... | false = inj₂ (var-elim v false eq)
-
-    set-extend : ∀ {i} -> (v : PVar i -> Bool) (u1 u2 : Bool)
-        -> ∀ x -> set (extend v u1) u2 x ≡ extend v u2 x
-    set-extend v u1 u2 this = refl
-    set-extend v u1 u2 (that x) = refl
 
     tabulate-constant : ∀ {i} (f : (PVar i -> Bool) -> Bool)
         -> prop {lzero} (tabulate f)
@@ -320,13 +315,14 @@ private
             v-trivial = transport (symm funext) \ ()
             aux : f v ≡ true
             aux rewrite v-trivial = prop-≡ t
-    tabulate-constant {i = succ i} f t v = {!   !}
-        where
-            t-reflect : prop (tabulate \ t -> f (extend t true)) ∧
-                        prop (tabulate \ t -> f (extend t false))
-            t-reflect = &&-reflect
-                (tabulate {i} \ _ -> f _)
-                (tabulate {i} \ _ -> f _) t
+    tabulate-constant {i = succ i} f t v with extend-case v |
+        &&-reflect
+            (tabulate {i} \ _ -> f _)
+            (tabulate {i} \ _ -> f _) t
+    ... | inj₁ extend-true | t-reflect rewrite extend-true =
+        tabulate-constant (\ t -> f (extend t true)) (π₁ t-reflect) _
+    ... | inj₂ extend-false | t-reflect rewrite extend-false =
+        tabulate-constant (\ t -> f (extend t false)) (π₂ t-reflect) _
 
 solve-uncurried : ∀ {i} (f : Formula i)
     -> prop {lzero} (tabulate (_⊨ f))
@@ -339,5 +335,6 @@ solve-uncurried f t Γ = Completeness f _ aux
 P∨P : (P : Prop ℓ) -> P ∨ P ≡ P
 P∨P P = equiv-equal
     (solve-uncurried {i = 1}
-        ((F this F| F this F> F this) F& (F this F> F this F| F this)) _ \ _ -> P)
- 
+        ((F this ||| F this ==> F this) &&& (F this ==> F this ||| F this)) _ \ _ -> P)
+
+-- TODO make a macro for this.
