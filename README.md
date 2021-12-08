@@ -9,9 +9,9 @@ On the other hand, complex constructions based on these postulates are marked as
 I haven't got to all the axioms yet. I haven't covered Regularity, Infinity and Choice. But some developments on the rest of the axioms are in place.
 Hopefully I have enough comments in there.
 
-Also, an (almost finished) propositional logic solver is present in the `logic.agda` file. Input a proposition with variables,
+Also, a propositional logic solver is present in the `logic.agda` file. Input a proposition with variables,
 if it is a tautology, the solver outputs a function `⊤ -> [proposition]`; else it generates a function `⊥ -> [Proposition]`.
-I have yet to prove some computationally irrelevant lemmas.
+It looks quite neat, and is sufficient for many uses.
 
 ## Further explorations
 - What is the best way to deal with stuff in Agda + LEM? This area seems unexplored by most of the people. I reckon
