@@ -293,19 +293,28 @@ Pair-unordered {x = x} {y = y} = Extensional \ z ->
 -- We have a criterion for pair equality.
 -- To prove that cleanly, we first develop some tools.
 private
-    Pair-tabulate : (x y z w : 𝕍)
-        -> ((z₁ : 𝕍) -> (z₁ ≗ x) ∨ (z₁ ≗ y) ≡ (z₁ ≗ z) ∨ (z₁ ≗ w))
-        -> (x ≗ z) ∧ (y ≗ w) ∨ (x ≗ w) ∧ (y ≗ z)
-    Pair-tabulate x y z w f = {!  !}
+    Pair-equal-left : ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≗ z) ∨ (x ≗ w)
+    Pair-equal-left {x} {y} {z} {w} eq 
+        = equal-equiv (Extensional-converse eq x) (ι₁ refl𝕍)
 
 Pair-equal : ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≡ z) * (y ≡ w) ⊎ (x ≡ w) * (y ≡ z)
 Pair-equal {x} {y} {z} {w} eq = {!   !}
 
 -- Singletons can be alternatively defined as unordered pairs.
 singleton-pair : ⟦ x ⟧ ≡ ⟨ x , x ⟩
-singleton-pair = Extensional \ z ->
+singleton-pair {x} = Extensional \ z ->
     equiv-equal
-        [ (\ { [ _ , i ] -> ι₁ i }) , (\ { (ι₁ refl𝕍) -> [ (\ i -> i) , refl𝕍 ] ; (ι₂ refl𝕍) -> [ (\ i -> i) , refl𝕍 ]}) ]
+    -- Goal
+    --    ((z ⊆ x) ∧ (z ≗ x) <-> (z ≗ x) ∨ (z ≗ x))
+    -- We add the condition that (z ≗ x) implies (z ⊆ x), to make this
+    -- a propositional tautology.
+        (solve 2 (\ p q ->
+            (q ==> p) ==> (p &&& q <=> q ||| q))
+            (z ⊆ x) (z ≗ x)  -- this instantiates p and q
+            \ { refl𝕍 i -> i })
+            -- then we add our condition that (z ≗ x) implies (z ⊆ x)
+
+-- [ (\ { [ _ , i ] -> ι₁ i }) , (\ { (ι₁ refl𝕍) -> [ (\ i -> i) , refl𝕍 ] ; (ι₂ refl𝕍) -> [ (\ i -> i) , refl𝕍 ]}) ]
 
 -- Then, we can have Kuratowski pairs.
 ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
