@@ -6,7 +6,7 @@ The non-non-constructive axioms (power set, replacement, etc.) are represented a
 For instance, `z ∈ 𝒫 x` reduces to `z ⊆ x`; and `z ∈ ⟦ y ∈ x ∥ P ⟧` reduces to `z ∈ x ∧ P z`.
 On the other hand, complex constructions based on these postulates are marked as abstract, to prevent definition explosion.
 
-I haven't got to all the axioms yet. I haven't covered Regularity, Infinity and Choice. But some developments on the rest of the axioms are in place.
+I have finished stating the axioms of ZF, and explored some of their consequences.
 Hopefully I have enough comments in there.
 
 Also, a propositional logic solver is present in the `logic.agda` file. Input a proposition with variables,
