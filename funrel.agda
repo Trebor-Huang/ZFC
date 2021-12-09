@@ -33,7 +33,7 @@ module Cartesian where
             -> u ∈ x -> v ∈ y
             -> ⟪ u , v ⟫ ∈ (x × y)
         Cartesian-intro x y u v u∈x v∈y
-            = [ ⟪u,v⟫⊆𝒫𝒫x∪y {x = x} {y = y} u∈x v∈y {_} ,
+            = [ ⟪u,v⟫∈𝒫𝒫x∪y {x = x} {y = y} u∈x v∈y {_} ,
                 exists u (exists v [ [ u∈x , v∈y ] , refl𝕍 ]) ]
 
         -- This alternative reduction rule eliminates the arbitrarily chosen

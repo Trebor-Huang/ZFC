@@ -425,12 +425,12 @@ module Kuratowski where
         -- This lemma is needed for proving that Cartesian products exist.
         -- It concerns implementation details of Kuratowski pairs, so we
         -- put it in the abstract block.
-        ⟪u,v⟫⊆𝒫𝒫x∪y : ∀ {u v}
+        ⟪u,v⟫∈𝒫𝒫x∪y : ∀ {u v}
             -> u ∈ x -> v ∈ y
             -> ⟪ u , v ⟫ ∈ 𝒫 (𝒫 (x ∪ y))
-        ⟪u,v⟫⊆𝒫𝒫x∪y u∈x v∈y (ι₁ refl𝕍) refl𝕍 = ι₁ u∈x
-        ⟪u,v⟫⊆𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₁ refl𝕍) = ι₁ u∈x
-        ⟪u,v⟫⊆𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₂ refl𝕍) = ι₂ v∈y
+        ⟪u,v⟫∈𝒫𝒫x∪y u∈x v∈y (ι₁ refl𝕍) refl𝕍 = ι₁ u∈x
+        ⟪u,v⟫∈𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₁ refl𝕍) = ι₁ u∈x
+        ⟪u,v⟫∈𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₂ refl𝕍) = ι₂ v∈y
 open Kuratowski public
 
 -- Regularity
