@@ -7,7 +7,10 @@ open import Agda.Primitive
 
 variable
     ℓ ℓ₁ ℓ₂ ℓ₃ ℓ₄ ℓ₅ ℓ₆ ℓ₇ ℓ₈ ℓ' ℓ'' : Level
-
+id : ∀ {A : Set ℓ} -> A -> A
+id a = a
+idP : ∀ {A : Prop ℓ} -> A -> A
+idP a = a
 -- The familiar constructs.
 infixl 10 _∧_ _*_ _,_
 infixl 9 _∨_ _⊎_
@@ -90,8 +93,11 @@ infixr 15 ¬_
 ¬_ : Prop ℓ -> Prop ℓ
 ¬_ {ℓ} P = P -> ⊥ {ℓ}
 
+_≢_ : {A : Set ℓ} -> A -> A -> Prop ℓ
+a ≢ b = (a ≡ b) -> ⊥ {lzero}
+
 ¬⊤≡⊥ : ¬ ⊤ ≡ ⊥ {ℓ}
-¬⊤≡⊥ = equiv-equal [ (\ f -> f _) , (\ ()) ]
+¬⊤≡⊥ = equiv-equal [ (\ f -> f _) , ex-falso ]
 
 ¬⊥≡⊤ : ¬ ⊥ ≡ ⊤ {ℓ}
 ¬⊥≡⊤ = equiv-equal [ (\ _ -> _) , (\ _ ()) ]
@@ -479,4 +485,3 @@ P∨P P = solve 1  -- We invoke the solver with 1 free variable.
 ... | inj₁ p | inj₁ q = p , q
 ... | _ | inj₂ ¬q rewrite ¬q = magic (≡-true PQ .π₂)
 ... | inj₂ ¬p | _ rewrite ¬p = magic (≡-true PQ .π₁)
- 

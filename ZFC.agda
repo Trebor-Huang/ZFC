@@ -6,9 +6,6 @@ open import Agda.Primitive
 open import logic
 open _∧_
 
-_≢_ : {A : Set ℓ} -> A -> A -> Prop ℓ
-a ≢ b = (a ≡ b) -> ⊥ {lzero}
-
 postulate
     -- We postulate a universe of sets, and a _∈_ relation between them.
     𝕍 : Set
@@ -36,7 +33,7 @@ Extensional-converse refl z = refl
 ≗-≡ eq = Extensional (\ z -> equiv-equal (ex eq z))
     where
         ex : x ≗ y -> (z : 𝕍) -> (z ∈ x -> z ∈ y) ∧ (z ∈ y -> z ∈ x)
-        ex refl𝕍 z = [ (\ x -> x) , (\ x -> x) ]
+        ex refl𝕍 z = [ idP , idP ]
 
 ≡-≗ : x ≡ y -> x ≗ y
 ≡-≗ refl = refl𝕍
@@ -141,7 +138,7 @@ postulate
         zig : z ∈ ⋃ (𝒫 x) -> z ∈ x
         zig (exists a [ z∈a , a⊆x ]) = a⊆x z∈a
         zag : z ∈ x -> z ∈ ⋃ (𝒫 x)
-        zag i = exists x [ i , (\ j -> j) ]
+        zag i = exists x [ i , idP ]
 
 𝒫-⋃ : x ⊆ 𝒫 (⋃ x)
 𝒫-⋃ z∈x y∈z = exists _ [ y∈z , z∈x ]
@@ -167,41 +164,48 @@ postulate
 syntax Comprehension x (\ y -> P) = ⟦ y ∈ x ∥ P ⟧
 infix 6 Comprehension
 
-abstract
-    -- Now intersections can be defined.
-    ⋂ : 𝕍 -> 𝕍
-    ⋂ x = ⟦ y ∈ ⋃ x ∥ (∀ w -> w ∈ x -> y ∈ w) ⟧
-    -- We can't prove much interesting stuff about intersections yet.
+module Intersection where
+    abstract
+        -- Now intersections can be defined.
+        ⋂ : 𝕍 -> 𝕍
+        ⋂ x = ⟦ y ∈ ⋃ x ∥ (∀ w -> w ∈ x -> y ∈ w) ⟧
+        -- We can't prove much interesting stuff about intersections yet.
 
-    Intersection-definition : ⋂ x ≡ ⟦ y ∈ ⋃ x ∥ (∀ w -> w ∈ x -> y ∈ w) ⟧
-    Intersection-definition = refl
+        Intersection-definition : ⋂ x ≡ ⟦ y ∈ ⋃ x ∥ (∀ w -> w ∈ x -> y ∈ w) ⟧
+        Intersection-definition = refl
 
-    Intersection : (x y : 𝕍) -> y ∈ ⋂ x ≡
-        (∃[ z ∈ 𝕍 ] (y ∈ z ∧ z ∈ x)) ∧ (∀ w -> w ∈ x -> y ∈ w)
-    Intersection x y = refl
-
+        Intersection : (x y : 𝕍) -> y ∈ ⋂ x ≡
+            (∃[ z ∈ 𝕍 ] (y ∈ z ∧ z ∈ x)) ∧ (∀ w -> w ∈ x -> y ∈ w)
+        Intersection x y = refl
+open Intersection public
 {-# REWRITE Intersection #-}
 
--- We can also define singleton sets now.
-⟦_⟧ : 𝕍 -> 𝕍
-⟦ x ⟧ = ⟦ w ∈ 𝒫 x ∥ w ≗ x ⟧
+module Singleton where
+    abstract
+        -- We can also define singleton sets now.
+        ⟦_⟧ : 𝕍 -> 𝕍
+        ⟦ x ⟧ = ⟦ w ∈ 𝒫 x ∥ w ≗ x ⟧
 
--- Singletons are really singletons.
-⟦_⟧-singleton : (x : 𝕍) {y : 𝕍} -> y ∈ ⟦ x ⟧ -> y ≡ x
-⟦ x ⟧-singleton [ y⊆x , y≗x ] = ≗-≡ y≗x
+        -- Singletons are really singletons.
+        ⟦_⟧-singleton : (x : 𝕍) {y : 𝕍} -> y ∈ ⟦ x ⟧ -> y ≡ x
+        ⟦ x ⟧-singleton [ y⊆x , y≗x ] = ≗-≡ y≗x
+
+        Singleton : (y ∈ ⟦ x ⟧) ≡ (y ≗ x)
+        Singleton = equiv-equal [ π₂ , (\ { refl𝕍 -> [ idP , refl𝕍 ]}) ]
+open Singleton public
+{-# REWRITE Singleton #-}
 
 -- 𝟙 is equivalently defined as a singleton.
 𝟙≡⟦∅⟧ : 𝟙 ≡ ⟦ ∅ ⟧
 𝟙≡⟦∅⟧ = Extensional
     \ z -> equiv-equal
-    [ (\ i -> [ i , ≡-≗ (x⊆∅ i) ]) ,  (\ { [ i , _ ] -> i }) ]
+    [ (\ u -> ≡-≗ (x⊆∅ u)) , (\ { refl𝕍 -> idP }) ]
 
 -- To unwrap a singleton, take the union.
 ⋃⟦x⟧ : ⋃ ⟦ x ⟧ ≡ x
 ⋃⟦x⟧ = Extensional
     \ z -> equiv-equal
-    [ (\ { (exists a [ z∈a , i ]) -> π₁ i z∈a}) ,
-    (\ w -> exists _ [ w , [ (\ i -> i) , refl𝕍 ] ]) ]
+    [ (\ { (exists _ [ z∈x , refl𝕍 ]) -> z∈x }) , (\ z∈x -> exists _ [ z∈x , refl𝕍 ]) ]
 
 postulate
     Image : (x : 𝕍) {_↦_ : 𝕍 -> 𝕍 -> Prop} -> (∀ y -> y ∈ x -> ∃![ z ∈ 𝕍 ] y ↦ z) -> 𝕍
@@ -232,28 +236,30 @@ private  -- Start a private block since we don't want to contaminate the namespa
             w≗b w (ι₂ right) = π₂ right
             w≗b w (ι₁ [ 𝟙≗∅ , _ ]) = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
 
-abstract
-    ⟨_,_⟩ : 𝕍 -> 𝕍 -> 𝕍
-    ⟨ x , y ⟩ = Image 𝟚 (Pair-unique x y)
-    Pair-definition : ⟨ x , y ⟩ ≡ Image 𝟚 (Pair-unique x y)
-    Pair-definition = refl
+module Pairing where
+    abstract
+        ⟨_,_⟩ : 𝕍 -> 𝕍 -> 𝕍
+        ⟨ x , y ⟩ = Image 𝟚 (Pair-unique x y)
+        Pair-definition : ⟨ x , y ⟩ ≡ Image 𝟚 (Pair-unique x y)
+        Pair-definition = refl
 
-    private
-        Pairing-> : z ∈ ⟨ x , y ⟩ -> (z ≗ x) ∨ (z ≗ y)
-        Pairing-> (exists a [ a∈𝟚 , pairing ]) with 𝟚-boolean {x = a} a∈𝟚
-        Pairing-> (exists ∅ [ a∈𝟚 , ι₁ [ _ , z≗x ] ]) | inj₁ refl = ι₁ z≗x
-        Pairing-> (exists ∅ [ a∈𝟚 , ι₂ [ ∅≗𝟙 , _ ] ]) | inj₁ refl = ex-falso (∅≢𝟙 (≗-≡ ∅≗𝟙))
-        Pairing-> (exists 𝟙 [ a∈𝟚 , ι₁ [ 𝟙≗∅ , _ ] ]) | inj₂ refl = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
-        Pairing-> (exists 𝟙 [ a∈𝟚 , ι₂ [ _ , z≗y ] ]) | inj₂ refl = ι₂ z≗y
+        private
+            Pairing-> : z ∈ ⟨ x , y ⟩ -> (z ≗ x) ∨ (z ≗ y)
+            Pairing-> (exists a [ a∈𝟚 , pairing ]) with 𝟚-boolean {x = a} a∈𝟚
+            Pairing-> (exists ∅ [ a∈𝟚 , ι₁ [ _ , z≗x ] ]) | inj₁ refl = ι₁ z≗x
+            Pairing-> (exists ∅ [ a∈𝟚 , ι₂ [ ∅≗𝟙 , _ ] ]) | inj₁ refl = ex-falso (∅≢𝟙 (≗-≡ ∅≗𝟙))
+            Pairing-> (exists 𝟙 [ a∈𝟚 , ι₁ [ 𝟙≗∅ , _ ] ]) | inj₂ refl = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
+            Pairing-> (exists 𝟙 [ a∈𝟚 , ι₂ [ _ , z≗y ] ]) | inj₂ refl = ι₂ z≗y
 
-        Pairing<- : (z ≗ x) ∨ (z ≗ y) -> z ∈ ⟨ x , y ⟩
-        Pairing<- (ι₁ refl𝕍)
-            = exists ∅ [ (\ ()) , ι₁ [ refl𝕍 , refl𝕍 ] ]
-        Pairing<- (ι₂ refl𝕍)
-            = exists 𝟙 [ (\ i -> i) , ι₂ [ refl𝕍 , refl𝕍 ] ]
-
-Pairing : z ∈ ⟨ x , y ⟩ ≡ (z ≗ x) ∨ (z ≗ y)
-Pairing = equiv-equal [ Pairing-> , Pairing<- ]
+            Pairing<- : (z ≗ x) ∨ (z ≗ y) -> z ∈ ⟨ x , y ⟩
+            Pairing<- (ι₁ refl𝕍)
+                = exists ∅ [ ex-falso , ι₁ [ refl𝕍 , refl𝕍 ] ]
+            Pairing<- (ι₂ refl𝕍)
+                = exists 𝟙 [ idP , ι₂ [ refl𝕍 , refl𝕍 ] ]
+        
+        Pairing : z ∈ ⟨ x , y ⟩ ≡ (z ≗ x) ∨ (z ≗ y)
+        Pairing = equiv-equal [ Pairing-> , Pairing<- ]
+open Pairing public
 
 {-# REWRITE Pairing #-}
 
@@ -320,72 +326,123 @@ private
                         (ι₁ refl𝕍))
             ... | refl𝕍 = refl𝕍
 
-Pair-equal : ∀ x y z w -> ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≡ z) * (y ≡ w) ⊎ (x ≡ w) * (y ≡ z)
-Pair-equal x y z w eq with ∨-oracle (true-≡ (Pair-equal-equiv x y z w eq))
+Pair-equal : ⟨ x , y ⟩ ≡ ⟨ z , w ⟩ -> (x ≡ z) * (y ≡ w) ⊎ (x ≡ w) * (y ≡ z)
+Pair-equal {x} {y} {z} {w} eq with ∨-oracle (true-≡ (Pair-equal-equiv x y z w eq))
 ... | inj₁ l = let (ll , lr) = ∧-oracle l in inj₁ (≗-≡ (≡-true ll) , ≗-≡ (≡-true lr))
 ... | inj₂ r = let (rl , rr) = ∧-oracle r in inj₂ (≗-≡ (≡-true rl) , ≗-≡ (≡-true rr))
 
 -- Singletons can be alternatively defined as unordered pairs.
 singleton-pair : ⟦ x ⟧ ≡ ⟨ x , x ⟩
-singleton-pair {x} = Extensional \ z ->
-    equiv-equal
-    -- Goal
-    --    ((z ⊆ x) ∧ (z ≗ x) <-> (z ≗ x) ∨ (z ≗ x))
-    -- We hook the condition that (z ≗ x) implies (z ⊆ x), to make this
-    -- a propositional tautology.
-        (solve 2 (\ p q ->
-            (q ==> p) ==> (p &&& q <=> q ||| q))
-            (z ⊆ x) (z ≗ x)  -- this instantiates p and q
-            \ { refl𝕍 i -> i })
-            -- then we prove the added condition
+singleton-pair {x} = Extensional \ z -> equiv-equal
+    (solve 1 (\ P -> P <=> P ||| P) (z ≗ x))
 
 -- Then, we can have Kuratowski pairs.
 ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
 ⟪ x , y ⟫ = ⟨ ⟦ x ⟧ , ⟨ x , y ⟩ ⟩
 
--- Now we can form pairwise unions and intersections.
-infixl 15 _∪_
-infixl 16 _∩_
-
-_∪_ : 𝕍 -> 𝕍 -> 𝕍
-x ∪ y = ⋃ ⟨ x , y ⟩
-
+-- We can prove that Kuratowski pairs are indeed ordered.
+-- A lemma first
 private
-    Pairwise-Union-> : (x y z : 𝕍)
-        -> z ∈ (x ∪ y) -> (z ∈ x) ∨ (z ∈ y)
-    Pairwise-Union-> x y z (exists .x [ z∈x , ι₁ refl𝕍 ]) = ι₁ z∈x
-    Pairwise-Union-> x y z (exists .y [ z∈y , ι₂ refl𝕍 ]) = ι₂ z∈y
+    Pair-zig : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , z ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , w ⟩)
+        -> (x ≡ z) * (y ≡ w)
+    Pair-zig x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
+    ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
+    ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
+    ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
+    ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
 
-    Pairwise-Union<- : (x y z : 𝕍)
-        -> (z ∈ x) ∨ (z ∈ y) -> z ∈ (x ∪ y)
-    Pairwise-Union<- x y z (ι₁ z∈x) = exists x [ z∈x , ι₁ refl𝕍 ]
-    Pairwise-Union<- x y z (ι₂ z∈y) = exists y [ z∈y , ι₂ refl𝕍 ]
+    Pair-zag : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , w ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , z ⟩)
+        -> (x ≡ z) * (y ≡ w)
+    Pair-zag x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
+    ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
+    ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
+    ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
+    ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
 
-Pairwise-Union : (x y z : 𝕍)
-    -> z ∈ (x ∪ y) ≡ (z ∈ x) ∨ (z ∈ y)
-Pairwise-Union x y z = equiv-equal [ Pairwise-Union-> x y z , Pairwise-Union<- x y z ]
+Pair-ordered : ⟪ x , y ⟫ ≡ ⟪ z , w ⟫ -> (x ≡ z) * (y ≡ w)
+Pair-ordered {x} {y} {z} {w} eq
+    rewrite singleton-pair {x} rewrite singleton-pair {z}
+    with Pair-equal eq
+... | inj₁ eq₁ = Pair-zig x y z w eq₁
+... | inj₂ eq₂ = Pair-zag x y z w eq₂
+
+-- Now we can form pairwise unions and intersections.
+module Pairwise-Union where
+    infixl 15 _∪_
+    abstract
+        _∪_ : 𝕍 -> 𝕍 -> 𝕍
+        x ∪ y = ⋃ ⟨ x , y ⟩
+
+        private
+            Pairwise-Union-> : (x y z : 𝕍)
+                -> z ∈ (x ∪ y) -> (z ∈ x) ∨ (z ∈ y)
+            Pairwise-Union-> x y z (exists .x [ z∈x , ι₁ refl𝕍 ]) = ι₁ z∈x
+            Pairwise-Union-> x y z (exists .y [ z∈y , ι₂ refl𝕍 ]) = ι₂ z∈y
+
+            Pairwise-Union<- : (x y z : 𝕍)
+                -> (z ∈ x) ∨ (z ∈ y) -> z ∈ (x ∪ y)
+            Pairwise-Union<- x y z (ι₁ z∈x) = exists x [ z∈x , ι₁ refl𝕍 ]
+            Pairwise-Union<- x y z (ι₂ z∈y) = exists y [ z∈y , ι₂ refl𝕍 ]
+
+        Pairwise-Union : (x y z : 𝕍)
+            -> z ∈ (x ∪ y) ≡ (z ∈ x) ∨ (z ∈ y)
+        Pairwise-Union x y z = equiv-equal [ Pairwise-Union-> x y z , Pairwise-Union<- x y z ]
+open Pairwise-Union public
+{-# REWRITE Pairwise-Union #-}
 
 -- We have completely analogous development for intersections.
-_∩_ : 𝕍 -> 𝕍 -> 𝕍
-x ∩ y = ⋂ ⟨ x , y ⟩
+module Pairwise-Intersection where
+    abstract
+        infixl 16 _∩_
+        _∩_ : 𝕍 -> 𝕍 -> 𝕍
+        x ∩ y = ⋂ ⟨ x , y ⟩
+        private
+            Pairwise-Intersection-> : (x y z : 𝕍)
+                -> z ∈ (x ∩ y) -> (z ∈ x) ∧ (z ∈ y)
+            Pairwise-Intersection-> x y z [ z∈x , z∈y ] =
+                [ z∈y x (ι₁ refl𝕍) , z∈y y (ι₂ refl𝕍) ]
 
-private
-    Pairwise-Intersection-> : (x y z : 𝕍)
-        -> z ∈ (x ∩ y) -> (z ∈ x) ∧ (z ∈ y)
-    Pairwise-Intersection-> x y z [ z∈x , z∈y ] =
-        [ z∈y x (ι₁ refl𝕍) , z∈y y (ι₂ refl𝕍) ]
+            Pairwise-Intersection<- : (x y z : 𝕍)
+                -> (z ∈ x) ∧ (z ∈ y) -> z ∈ (x ∩ y)
+            Pairwise-Intersection<- x y z [ z∈x , z∈y ] =
+                [ exists x [ z∈x , ι₁ refl𝕍 ] ,
+                (\ { w (ι₁ refl𝕍) -> z∈x ;
+                    w (ι₂ refl𝕍) -> z∈y }) ]
 
-    Pairwise-Intersection<- : (x y z : 𝕍)
-        -> (z ∈ x) ∧ (z ∈ y) -> z ∈ (x ∩ y)
-    Pairwise-Intersection<- x y z [ z∈x , z∈y ] =
-        [ exists x [ z∈x , ι₁ refl𝕍 ] ,
-        (\ { w (ι₁ refl𝕍) -> z∈x ;
-             w (ι₂ refl𝕍) -> z∈y }) ]
-
-Pairwise-Intersection : (x y z : 𝕍)
-    -> z ∈ (x ∩ y) ≡ (z ∈ x) ∧ (z ∈ y)
-Pairwise-Intersection x y z = equiv-equal [ Pairwise-Intersection-> x y z , Pairwise-Intersection<- x y z ]
+        Pairwise-Intersection : (x y z : 𝕍)
+            -> z ∈ (x ∩ y) ≡ (z ∈ x) ∧ (z ∈ y)
+        Pairwise-Intersection x y z = equiv-equal [ Pairwise-Intersection-> x y z , Pairwise-Intersection<- x y z ]
+open Pairwise-Intersection public
+{-# REWRITE Pairwise-Intersection #-}
 
 -- Regularity
--- infinity
+postulate
+    Regularity : ∀ {a} -> (∀ x -> x ∈ a -> ∃[ y ∈ 𝕍 ] (y ∈ a ∧ y ∈ x))
+        -> a ≡ ∅
+
+-- A set cannot contain itself.
+x∉x : ¬ (x ∈ x)
+x∉x {x} x∈x = equal-equiv (Extensional-converse ⟦x⟧≡∅ x) refl𝕍
+    where
+        ⟦x⟧≡∅ : ⟦ x ⟧ ≡ ∅
+        ⟦x⟧≡∅ = Regularity \ { _ refl𝕍 -> exists x [ refl𝕍 , x∈x ] }
+
+-- A set cannot contain every set.
+𝕍-proper : ¬ (∀ y -> y ∈ x)
+𝕍-proper {x} univ = x∉x {x} (univ x)
+-- The consequences of Regularity is profound. So we will not explore them too soon.
+
+-- Infinity
+-- Since we have Agda, let's define the set ω in a really neat way.
+infixl 21 _⁺
+_⁺ : 𝕍 -> 𝕍  -- defines the successor
+x ⁺ = x ∪ ⟦ x ⟧
+
+
+
+𝟙≡∅⁺ : 𝟙 ≡ ∅ ⁺
+𝟙≡∅⁺ = Extensional \ z ->
+    {!   !}
+
 -- choice
+-- -} 
