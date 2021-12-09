@@ -9,8 +9,12 @@ private variable
     ℓ ℓ₁ ℓ₂ ℓ₃ ℓ₄ ℓ₅ ℓ₆ ℓ₇ ℓ₈ ℓ' ℓ'' : Level
 id : ∀ {A : Set ℓ} -> A -> A
 id a = a
+const : ∀ {A : Set ℓ} {B : Set ℓ'} -> A -> B -> A
+const a _ = a
 idP : ∀ {A : Prop ℓ} -> A -> A
 idP a = a
+constP : ∀ {A : Prop ℓ} {B : Prop ℓ'} -> A -> B -> A
+constP a _ = a
 -- The familiar constructs.
 infixl 10 _∧_ _*_ _,_
 infixl 9 _∨_ _⊎_
@@ -89,6 +93,18 @@ equiv-equal {P = P} {Q = Q} [ P->Q , Q->P ] with truth P | truth Q
 ... | inj₂ refl | inj₁ refl = magic (Q->P _)
 ... | inj₂ refl | inj₂ refl = refl
 
+truth-⊤ : truth {ℓ} ⊤ ≡ inj₁ refl
+truth-⊤ {ℓ} with truth {ℓ} ⊤
+... | inj₁ refl = refl
+... | inj₂ eq = magic (equal-equiv eq _)
+
+truth-⊥ : truth {ℓ} ⊥ ≡ inj₂ refl
+truth-⊥ {ℓ} with truth {ℓ} ⊥
+... | inj₂ refl = refl
+... | inj₁ eq = magic (equal-equiv (symm eq) _)
+
+{-# REWRITE truth-⊤ truth-⊥ #-}
+
 infixr 15 ¬_
 ¬_ : Prop ℓ -> Prop ℓ
 ¬_ {ℓ} P = P -> ⊥ {ℓ}
@@ -138,17 +154,6 @@ postulate
     funext : {A : Set ℓ} {B : A -> Set ℓ'}
         -> {f g : ∀ a -> B a}
         -> (f ≡ g) ≡ (∀ x -> f x ≡ g x)
-
--- Some syntax for chaining.
-_Then_ : {A : Prop ℓ} {B : Prop ℓ'} {C : Prop ℓ''}
-    -> (A -> B) -> (B -> C) -> (A -> C)
-(f Then g) a = g (f a)
-
-_ThusFrom_ : {A : Prop ℓ} {B : Prop ℓ'}
-    -> A -> (A -> B) -> B
-a ThusFrom f = f a
-
-infixr 2 _Then_ _ThusFrom_
 
 -- Develop boolean reflection tools.
 infixl 15 _&&_

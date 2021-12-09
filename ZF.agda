@@ -22,6 +22,9 @@ private variable
 data _≗_ : 𝕍 -> 𝕍 -> Prop where
     refl𝕍 : x ≗ x
 
+symmP : x ≗ y -> y ≗ x
+symmP refl𝕍 = refl𝕍
+
 -- The _∈_ relation is extensional. The elements of (_∈ x) uniquely defines x.
 postulate
     Extensional : (∀ z -> z ∈ x ≡ z ∈ y) -> x ≡ y
@@ -61,11 +64,11 @@ postulate
 -- This crucially depends on the principle of excluded middle.
 non-empty : (x ≢ ∅) -> ∃[ y ∈ 𝕍 ] y ∈ x
 non-empty {x} neq with ε[ y ∈ 𝕍 ] y ∈ x
-... | ι₁ no =            -- Case 1 : y contains no element,
-        neq                  -- y is not the empty set (assumption), but
-        (∅-unique \ y ->     -- y is the empty set, since
-            false-≡ (no y))  -- y is contains no element. (assumption)
-    ThusFrom ex-falso        -- Contradiction!
+... | ι₁ no = ex-falso   -- Case 1 : y contains no element,
+        (neq                  -- y is not the empty set (assumption), but
+        (∅-unique \ y ->      -- y is the empty set, since
+            false-≡ (no y)))  -- y is contains no element. (assumption)
+                              -- Contradiction!
 ... | ι₂ yes = yes       -- Case 2 : y contains an element, QED.
 
 -- We define the subset relation.
@@ -212,57 +215,58 @@ open Singleton public
     [ (\ { (exists _ [ z∈x , refl𝕍 ]) -> z∈x }) , (\ z∈x -> exists _ [ z∈x , refl𝕍 ]) ]
 
 postulate
-    Image : (x : 𝕍) {_↦_ : 𝕍 -> 𝕍 -> Prop} -> (∀ y -> y ∈ x -> ∃![ z ∈ 𝕍 ] y ↦ z) -> 𝕍
-    Replacement : (x : 𝕍) {_↦_ : 𝕍 -> 𝕍 -> Prop}
-        -> (unique : ∀ y -> y ∈ x -> ∃![ z ∈ 𝕍 ] y ↦ z)
-        -> (∀ z -> z ∈ Image x unique ≡ ∃[ y ∈ 𝕍 ] y ∈ x ∧ y ↦ z)
+    Image : (𝕍 -> 𝕍) -> (𝕍 -> 𝕍)
+    Replacement : (F : 𝕍 -> 𝕍) (x : 𝕍)
+        -> (∀ z -> z ∈ Image F x ≡ ∃[ y ∈ 𝕍 ] y ∈ x ∧ F y ≗ z)
 {-# REWRITE Replacement #-}
 
 -- Now we can *really* start to make sets.
--- For a start, we prove Pairing, i.e. {a, b} is a set
--- We first need to get a predicate to replace.
+-- For a start, we prove Pairing, i.e. {a, b} is a set.
 private  -- Start a private block since we don't want to contaminate the namespace
-    Pair : 𝕍 -> 𝕍 -> 𝕍 -> 𝕍 -> Prop
-    Pair a b x y = (x ≗ ∅ ∧ y ≗ a) ∨ (x ≗ 𝟙 ∧ y ≗ b)
-    -- Now let's prove that it is indeed a map!
-    Pair-unique : ∀ a b -> ∀ y -> y ∈ 𝟚 -> ∃![ z ∈ 𝕍 ] (Pair a b y z)
-    Pair-unique a b y y∈𝟚 with 𝟚-boolean {x = y} y∈𝟚
-    ... | inj₁ refl = exists-unique a \ w ->
-        \ { pairing -> ≗-≡ (w≗a w pairing) }
-        where
-            w≗a : ∀ w -> (∅ ≗ ∅) ∧ (w ≗ a) ∨ (∅ ≗ 𝟙) ∧ (w ≗ b) -> w ≗ a
-            w≗a w (ι₁ left) = π₂ left
-            w≗a w (ι₂ [ ∅≗𝟙 , _ ]) = ex-falso (∅≢𝟙 (≗-≡ ∅≗𝟙))
-    ... | inj₂ refl = exists-unique b \ w ->
-        \ { pairing -> ≗-≡ (w≗b w pairing) }
-        where
-            w≗b : ∀ w -> (𝟙 ≗ ∅) ∧ (w ≗ a) ∨ (𝟙 ≗ 𝟙) ∧ (w ≗ b) -> w ≗ b
-            w≗b w (ι₂ right) = π₂ right
-            w≗b w (ι₁ [ 𝟙≗∅ , _ ]) = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
+    Pair : 𝕍 -> 𝕍 -> (𝕍 -> 𝕍)
+    Pair a b x with truth (x ≗ ∅)
+    ... | inj₁ _ = a
+    ... | _ with truth (x ≗ 𝟙)
+    ... | inj₁ _ = b
+    ... | _ = ∅
+
+    Pair-∅ : Pair x y ∅ ≡ x
+    Pair-∅ with truth (∅ ≗ ∅)
+    ... | inj₁ _ = refl
+    ... | inj₂ eq = magic (equal-equiv eq refl𝕍)
+
+    Pair-𝟙 : Pair x y 𝟙 ≡ y
+    Pair-𝟙 with truth (𝟙 ≗ ∅)
+    ... | inj₁ eq = magic (∅≢𝟙 (symm (≗-≡ (≡-true eq))))
+    ... | inj₂ _ with truth (𝟙 ≗ 𝟙)
+    ... | inj₁ _ = refl
+    ... | inj₂ eq = magic (equal-equiv eq refl𝕍)
 
 module Pairing where
     abstract
         ⟨_,_⟩ : 𝕍 -> 𝕍 -> 𝕍
-        ⟨ x , y ⟩ = Image 𝟚 (Pair-unique x y)
-        Pair-definition : ⟨ x , y ⟩ ≡ Image 𝟚 (Pair-unique x y)
+        ⟨ x , y ⟩ = Image (Pair x y) 𝟚
+        Pair-definition : ⟨ x , y ⟩ ≡ Image (Pair x y) 𝟚
         Pair-definition = refl
 
-        private
-            Pairing-> : z ∈ ⟨ x , y ⟩ -> (z ≗ x) ∨ (z ≗ y)
-            Pairing-> (exists a [ a∈𝟚 , pairing ]) with 𝟚-boolean {x = a} a∈𝟚
-            Pairing-> (exists ∅ [ a∈𝟚 , ι₁ [ _ , z≗x ] ]) | inj₁ refl = ι₁ z≗x
-            Pairing-> (exists ∅ [ a∈𝟚 , ι₂ [ ∅≗𝟙 , _ ] ]) | inj₁ refl = ex-falso (∅≢𝟙 (≗-≡ ∅≗𝟙))
-            Pairing-> (exists 𝟙 [ a∈𝟚 , ι₁ [ 𝟙≗∅ , _ ] ]) | inj₂ refl = ex-falso (∅≢𝟙 (symm (≗-≡ 𝟙≗∅)))
-            Pairing-> (exists 𝟙 [ a∈𝟚 , ι₂ [ _ , z≗y ] ]) | inj₂ refl = ι₂ z≗y
+        x∈⟨x,y⟩ : x ∈ ⟨ x , y ⟩
+        x∈⟨x,y⟩ = exists ∅ [ (\ i _ -> i) , ≡-≗ Pair-∅ ]
 
-            Pairing<- : (z ≗ x) ∨ (z ≗ y) -> z ∈ ⟨ x , y ⟩
-            Pairing<- (ι₁ refl𝕍)
-                = exists ∅ [ ex-falso , ι₁ [ refl𝕍 , refl𝕍 ] ]
-            Pairing<- (ι₂ refl𝕍)
-                = exists 𝟙 [ idP , ι₂ [ refl𝕍 , refl𝕍 ] ]
+        y∈⟨x,y⟩ : y ∈ ⟨ x , y ⟩
+        y∈⟨x,y⟩ = exists 𝟙 [ idP , ≡-≗ Pair-𝟙 ]
 
         Pairing : z ∈ ⟨ x , y ⟩ ≡ (z ≗ x) ∨ (z ≗ y)
-        Pairing = equiv-equal [ Pairing-> , Pairing<- ]
+        Pairing = equiv-equal [ zig , zag ]
+            where
+                zig : z ∈ ⟨ x , y ⟩ -> (z ≗ x) ∨ (z ≗ y)
+                zig {z} {x} {y} (exists b [ b∈𝟚 , eq ]) with 𝟚-boolean {b} b∈𝟚
+                ... | inj₁ refl = ι₁ (symmP
+                    (equal-equiv (cong (_≗ z) Pair-∅) eq))
+                ... | inj₂ refl = ι₂ (symmP
+                    (equal-equiv (cong (_≗ z) Pair-𝟙) eq))
+                zag : (z ≗ x) ∨ (z ≗ y) -> z ∈ ⟨ x , y ⟩
+                zag (ι₁ refl𝕍) = x∈⟨x,y⟩
+                zag (ι₂ refl𝕍) = y∈⟨x,y⟩
 open Pairing public
 
 {-# REWRITE Pairing #-}
@@ -538,3 +542,4 @@ count-ord n _ = injective-ord _ _ (ord-count _ _)
 
 -- The axiom of choice needs more machinery to state.
 -- Therefore, we postpone it.
+-- -} 
