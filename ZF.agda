@@ -59,8 +59,8 @@ postulate
 
 -- Conversely, every non-empty set has an element.
 -- This crucially depends on the principle of excluded middle.
-non-empty : (x ≢ ∅) -> ∃[ y ∈ 𝕍 ] (y ∈ x)
-non-empty {x} neq with ε[ y ∈ 𝕍 ] (y ∈ x)
+non-empty : (x ≢ ∅) -> ∃[ y ∈ 𝕍 ] y ∈ x
+non-empty {x} neq with ε[ y ∈ 𝕍 ] y ∈ x
 ... | ι₁ no =            -- Case 1 : y contains no element,
         neq                  -- y is not the empty set (assumption), but
         (∅-unique \ y ->     -- y is the empty set, since
@@ -129,7 +129,7 @@ x∈𝒫x i = i
 
 postulate
     ⋃ : 𝕍 -> 𝕍
-    Union : (x : 𝕍) -> z ∈ ⋃ x ≡ ∃[ y ∈ 𝕍 ] (z ∈ y ∧ y ∈ x)
+    Union : (x : 𝕍) -> z ∈ ⋃ x ≡ ∃[ y ∈ 𝕍 ] z ∈ y ∧ y ∈ x
 {-# REWRITE Union #-}
 
 -- Union and powerset are "sort of" inverse to each other.
@@ -179,7 +179,7 @@ module Intersection where
         Intersection-definition = refl
 
         Intersection : (x y : 𝕍) -> y ∈ ⋂ x ≡
-            (∃[ z ∈ 𝕍 ] (y ∈ z ∧ z ∈ x)) ∧ (∀ w -> w ∈ x -> y ∈ w)
+            (∃[ z ∈ 𝕍 ] y ∈ z ∧ z ∈ x) ∧ (∀ w -> w ∈ x -> y ∈ w)
         Intersection x y = refl
 open Intersection public
 {-# REWRITE Intersection #-}
@@ -215,7 +215,7 @@ postulate
     Image : (x : 𝕍) {_↦_ : 𝕍 -> 𝕍 -> Prop} -> (∀ y -> y ∈ x -> ∃![ z ∈ 𝕍 ] y ↦ z) -> 𝕍
     Replacement : (x : 𝕍) {_↦_ : 𝕍 -> 𝕍 -> Prop}
         -> (unique : ∀ y -> y ∈ x -> ∃![ z ∈ 𝕍 ] y ↦ z)
-        -> (∀ z -> z ∈ Image x unique ≡ ∃[ y ∈ 𝕍 ] (y ∈ x ∧ y ↦ z))
+        -> (∀ z -> z ∈ Image x unique ≡ ∃[ y ∈ 𝕍 ] y ∈ x ∧ y ↦ z)
 {-# REWRITE Replacement #-}
 
 -- Now we can *really* start to make sets.
@@ -260,7 +260,7 @@ module Pairing where
                 = exists ∅ [ ex-falso , ι₁ [ refl𝕍 , refl𝕍 ] ]
             Pairing<- (ι₂ refl𝕍)
                 = exists 𝟙 [ idP , ι₂ [ refl𝕍 , refl𝕍 ] ]
-        
+
         Pairing : z ∈ ⟨ x , y ⟩ ≡ (z ≗ x) ∨ (z ≗ y)
         Pairing = equiv-equal [ Pairing-> , Pairing<- ]
 open Pairing public
@@ -340,39 +340,6 @@ singleton-pair : ⟦ x ⟧ ≡ ⟨ x , x ⟩
 singleton-pair {x} = Extensional \ z -> equiv-equal
     (solve 1 (\ P -> P <=> P ||| P) (z ≗ x))
 
-module Kuratowski where
-    abstract
-        -- Then, we can have Kuratowski pairs.
-        -- This construction cleverly avoids the need for Regularity.
-        ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
-        ⟪ x , y ⟫ = ⟨ ⟦ x ⟧ , ⟨ x , y ⟩ ⟩
-
-        -- We can prove that Kuratowski pairs are indeed ordered.
-        -- A lemma first
-        private
-            Pair-zig : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , z ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , w ⟩)
-                -> (x ≡ z) * (y ≡ w)
-            Pair-zig x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
-            ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
-            ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
-            ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
-            ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
-
-            Pair-zag : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , w ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , z ⟩)
-                -> (x ≡ z) * (y ≡ w)
-            Pair-zag x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
-            ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
-            ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
-            ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
-            ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
-
-        Pair-ordered : ⟪ x , y ⟫ ≡ ⟪ z , w ⟫ -> (x ≡ z) * (y ≡ w)
-        Pair-ordered {x} {y} {z} {w} eq
-            rewrite singleton-pair {x} rewrite singleton-pair {z}
-            with Pair-equal eq
-        ... | inj₁ eq₁ = Pair-zig x y z w eq₁
-        ... | inj₂ eq₂ = Pair-zag x y z w eq₂
-
 -- Now we can form pairwise unions and intersections.
 module Pairwise-Union where
     infixl 15 _∪_
@@ -422,9 +389,53 @@ module Pairwise-Intersection where
 open Pairwise-Intersection public
 {-# REWRITE Pairwise-Intersection #-}
 
+module Kuratowski where
+    abstract
+        -- We can also construct Kuratowski pairs.
+        -- This construction cleverly avoids the need for Regularity.
+        ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
+        ⟪ x , y ⟫ = ⟨ ⟦ x ⟧ , ⟨ x , y ⟩ ⟩
+
+        -- We can prove that Kuratowski pairs are indeed ordered.
+        -- A lemma first
+        private
+            Pair-zig : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , z ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , w ⟩)
+                -> (x ≡ z) * (y ≡ w)
+            Pair-zig x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
+            ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
+
+            Pair-zag : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , w ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , z ⟩)
+                -> (x ≡ z) * (y ≡ w)
+            Pair-zag x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
+            ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
+
+        Pair-ordered : ⟪ x , y ⟫ ≡ ⟪ z , w ⟫ -> (x ≡ z) * (y ≡ w)
+        Pair-ordered {x} {y} {z} {w} eq
+            rewrite singleton-pair {x} rewrite singleton-pair {z}
+            with Pair-equal eq
+        ... | inj₁ eq₁ = Pair-zig x y z w eq₁
+        ... | inj₂ eq₂ = Pair-zag x y z w eq₂
+
+        -- This lemma is needed for proving that Cartesian products exist.
+        -- It concerns implementation details of Kuratowski pairs, so we
+        -- put it in the abstract block.
+        ⟪u,v⟫⊆𝒫𝒫x∪y : ∀ {u v}
+            -> u ∈ x -> v ∈ y
+            -> ⟪ u , v ⟫ ∈ 𝒫 (𝒫 (x ∪ y))
+        ⟪u,v⟫⊆𝒫𝒫x∪y u∈x v∈y (ι₁ refl𝕍) refl𝕍 = ι₁ u∈x
+        ⟪u,v⟫⊆𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₁ refl𝕍) = ι₁ u∈x
+        ⟪u,v⟫⊆𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₂ refl𝕍) = ι₂ v∈y
+open Kuratowski public
+
 -- Regularity
 postulate
-    Regularity : ∀ {a} -> (∀ x -> x ∈ a -> ∃[ y ∈ 𝕍 ] (y ∈ a ∧ y ∈ x)) -> a ≡ ∅
+    Regularity : ∀ {a} -> (∀ x -> x ∈ a -> ∃[ y ∈ 𝕍 ] y ∈ a ∧ y ∈ x) -> a ≡ ∅
 
 -- A set cannot contain itself.
 x∉x : ¬ (x ∈ x)
@@ -515,7 +526,7 @@ injective-ord (succ n) (succ m) eq
 postulate
     ω : 𝕍
     Infinity : ∀ n -> ord n ∈ ω
-    count : ∀ x -> .(x ∈ ω) -> Nat
+    count : ∀ x -> (x ∈ ω) -> Nat
     -- ord and count are inverses.
     ord-count : ∀ x i -> ord (count x i) ≡ x
 

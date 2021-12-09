@@ -40,7 +40,7 @@ data ExistsUnique (A : Set ℓ) (P : A -> Prop ℓ') : Prop (ℓ ⊔ ℓ') where
     exists-unique : (a : A) -> (∀ b -> P b -> b ≡ a) -> ExistsUnique A P
 syntax ExistsUnique A (\x -> P) = ∃![ x ∈ A ] P
 
-infixr 10 Exists ExistsUnique
+infixr 7 Exists ExistsUnique choice  -- choice is a similar syntax defined later
 
 data ⊥ {ℓ} : Prop ℓ where
 ex-falso : {P : Prop ℓ'} -> ⊥ {ℓ} -> P
@@ -120,7 +120,7 @@ false-≡ ¬P = equiv-equal [ ¬P , (\ ()) ]
 ≡-false refl ()
 
 choice : (A : Set ℓ) (P : A -> Prop ℓ')
-    -> (∀ x -> ¬ P x) ∨ ∃[ x ∈ A ] P x
+    -> (∀ x -> ¬ P x) ∨ (∃[ x ∈ A ] P x)
 choice A P with truth (∃[ x ∈ A ] P x)
 ... | inj₁ eq rewrite eq = ι₂ _
 ... | inj₂ eq = ι₁ \ x Px -> ex-falso (equal-equiv eq (exists x Px))
