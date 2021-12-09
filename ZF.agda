@@ -1,6 +1,6 @@
 {-# OPTIONS --prop --rewriting #-}
 
-module ZFC where
+module ZF where
 open import Agda.Builtin.Equality
 open import Agda.Primitive
 open import logic
@@ -71,8 +71,11 @@ non-empty {x} neq with ε[ y ∈ 𝕍 ] (y ∈ x)
 _⊆_ : 𝕍 -> 𝕍 -> Prop
 x ⊆ y = ∀ {z} -> z ∈ x -> z ∈ y
 
-x⊆∅ : x ⊆ ∅ -> x ≡ ∅
-x⊆∅ s = ∅-unique \ y -> false-≡ s
+x⊆∅-≡ : x ⊆ ∅ -> x ≡ ∅
+x⊆∅-≡ s = ∅-unique \ y -> false-≡ s
+
+x⊆∅ : (x ⊆ ∅) ≡ (x ≗ ∅)
+x⊆∅ = equiv-equal [ (\ x⊆∅ -> ≡-≗ (x⊆∅-≡ x⊆∅)) , (\{ refl𝕍 -> idP }) ]
 
 -- We postulate the existence of power sets.
 postulate
@@ -118,7 +121,7 @@ x∈𝒫x i = i
         [ x∈𝟚 , z∈x z ])
     where
         z∈x : ∀ z -> z ⊆ ∅ -> z ∈ x
-        z∈x z z⊆∅ rewrite x⊆∅ {z} z⊆∅
+        z∈x z z⊆∅ rewrite x⊆∅-≡ {z} z⊆∅
             with choice-safe (≡-false non-empty)
         ... | exists a a∈x rewrite symm (∅-unique {y = a} (\ z -> false-≡ (x∈𝟚 a∈x)))
             = a∈x
@@ -199,7 +202,7 @@ open Singleton public
 𝟙≡⟦∅⟧ : 𝟙 ≡ ⟦ ∅ ⟧
 𝟙≡⟦∅⟧ = Extensional
     \ z -> equiv-equal
-    [ (\ u -> ≡-≗ (x⊆∅ u)) , (\ { refl𝕍 -> idP }) ]
+    [ (\ u -> ≡-≗ (x⊆∅-≡ u)) , (\ { refl𝕍 -> idP }) ]
 
 -- To unwrap a singleton, take the union.
 ⋃⟦x⟧ : ⋃ ⟦ x ⟧ ≡ x
@@ -417,8 +420,7 @@ open Pairwise-Intersection public
 
 -- Regularity
 postulate
-    Regularity : ∀ {a} -> (∀ x -> x ∈ a -> ∃[ y ∈ 𝕍 ] (y ∈ a ∧ y ∈ x))
-        -> a ≡ ∅
+    Regularity : ∀ {a} -> (∀ x -> x ∈ a -> ∃[ y ∈ 𝕍 ] (y ∈ a ∧ y ∈ x)) -> a ≡ ∅
 
 -- A set cannot contain itself.
 x∉x : ¬ (x ∈ x)
@@ -427,6 +429,15 @@ x∉x {x} x∈x = equal-equiv (Extensional-converse ⟦x⟧≡∅ x) refl𝕍
         ⟦x⟧≡∅ : ⟦ x ⟧ ≡ ∅
         ⟦x⟧≡∅ = Regularity \ { _ refl𝕍 -> exists x [ refl𝕍 , x∈x ] }
 
+-- Two sets cannot mutually contain each other.
+-- This pattern can be continued by induction, but we do not persue this here.
+∉-cycle : (x ∈ y) -> (y ∈ x) -> ⊥ {lzero}
+∉-cycle {x} {y} x∈y y∈x = equal-equiv (Extensional-converse ⟨x,y⟩≡∅ x) (ι₁ refl𝕍)
+    where
+        ⟨x,y⟩≡∅ : ⟨ x , y ⟩ ≡ ∅
+        ⟨x,y⟩≡∅ = Regularity \ { w (ι₁ refl𝕍) -> exists y [ ι₂ refl𝕍 , y∈x ] ;
+                                 w (ι₂ refl𝕍) -> exists x [ ι₁ refl𝕍 , x∈y ] }
+
 -- A set cannot contain every set.
 𝕍-proper : ¬ (∀ y -> y ∈ x)
 𝕍-proper {x} univ = x∉x {x} (univ x)
@@ -434,15 +445,81 @@ x∉x {x} x∈x = equal-equiv (Extensional-converse ⟦x⟧≡∅ x) refl𝕍
 
 -- Infinity
 -- Since we have Agda, let's define the set ω in a really neat way.
+
+-- To be consistent, we use 𝟘 as an alias for the empty set.
+𝟘 : 𝕍
+𝟘 = ∅
+
 infixl 21 _⁺
 _⁺ : 𝕍 -> 𝕍  -- defines the successor
 x ⁺ = x ∪ ⟦ x ⟧
 
-
-
+-- 𝟙 is a successor.
 𝟙≡∅⁺ : 𝟙 ≡ ∅ ⁺
-𝟙≡∅⁺ = Extensional \ z ->
-    {!   !}
+𝟙≡∅⁺ = Extensional zigzag
+    where
+        zigzag : ∀ z -> (z ⊆ ∅) ≡ ⊥ ∨ (z ≗ ∅)
+        zigzag z rewrite (x⊆∅ {z}) = equiv-equal [ ι₂ , (\ { (ι₂ x) -> x }) ]
 
--- choice
--- -} 
+-- 𝟚 is also a successor.
+𝟚≡𝟙⁺ : 𝟚 ≡ 𝟙 ⁺
+𝟚≡𝟙⁺ = Extensional \ z -> equiv-equal [ zig , zag ]
+    where
+        zig : z ∈ 𝟚 -> (z ⊆ ∅) ∨ (z ≗ 𝟙)
+        zig {z} z∈𝟚 with 𝟚-boolean {z} z∈𝟚
+        ... | inj₁ refl = ι₁ idP
+        ... | inj₂ refl = ι₂ refl𝕍
+        zag : (z ⊆ ∅) ∨ (z ≗ 𝟙) -> z ∈ 𝟚
+        zag (ι₁ z⊆∅) w∈z _ = z⊆∅ w∈z
+        zag (ι₂ refl𝕍) = idP
+
+-- The successor operation is injective.
+injective-⁺ : ∀ x y -> x ⁺ ≡ y ⁺ -> x ≡ y
+injective-⁺ x y eq = Extensional \ z -> equiv-equal [ zig , zag ]
+    where
+        ext : (w : 𝕍) -> w ∈ x ∨ (w ≗ x) ≡ w ∈ y ∨ (w ≗ y)
+        ext = Extensional-converse eq
+        zig : z ∈ x -> z ∈ y
+        zig z∈x with equal-equiv (ext _) (ι₁ z∈x) | equal-equiv (ext x) (ι₂ refl𝕍)
+        ... | ι₁ z∈y | _ = z∈y
+        ... | ι₂ refl𝕍 | ι₁ x∈y = ex-falso
+            (∉-cycle {y} {x} z∈x x∈y)  -- Since we instantiated a refl𝕍, z∈x is actually y∈x.
+        ... | ι₂ refl𝕍 | ι₂ refl𝕍 = z∈x
+        zag : z ∈ y -> z ∈ x  -- I didn't bother reusing zig, maybe later..
+        zag z∈y with equal-equiv (symm (ext _)) (ι₁ z∈y) | equal-equiv (symm (ext y)) (ι₂ refl𝕍)
+        ... | ι₁ z∈x | _ = z∈x
+        ... | ι₂ refl𝕍 | ι₁ y∈x = ex-falso
+            (∉-cycle {x} {y} z∈y y∈x)
+        ... | ι₂ refl𝕍 | ι₂ refl𝕍 = z∈y
+
+x⁺≢∅ : ∀ x -> (x ⁺ ≡ ∅) -> ⊥ {lzero}
+x⁺≢∅ x eq = equal-equiv (Extensional-converse eq x) (ι₂ refl𝕍)
+
+-- The ord function embeds Nat into ω.
+ord : Nat -> 𝕍
+ord 0 = 𝟘
+ord (succ n) = (ord n) ⁺
+
+injective-ord : ∀ n m -> ord n ≡ ord m -> n ≡ m
+injective-ord zero zero eq = refl
+injective-ord zero (succ m) eq = magic (x⁺≢∅ (ord m) (symm eq))
+injective-ord (succ n) zero eq = magic (x⁺≢∅ (ord n) eq)
+injective-ord (succ n) (succ m) eq
+    rewrite injective-ord n m (injective-⁺ (ord n) (ord m) eq) = refl
+
+-- We now state the axiom of Infinity.
+postulate
+    ω : 𝕍
+    Infinity : ∀ n -> ord n ∈ ω
+    count : ∀ x -> .(x ∈ ω) -> Nat
+    -- ord and count are inverses.
+    ord-count : ∀ x i -> ord (count x i) ≡ x
+
+-- From this, we can prove the other side of the inverse.
+count-ord : ∀ n i -> count (ord n) i ≡ n
+count-ord n _ = injective-ord _ _ (ord-count _ _)
+
+{-# REWRITE ord-count count-ord #-}
+
+-- The axiom of choice needs more machinery to state.
+-- Therefore, we postpone it.
