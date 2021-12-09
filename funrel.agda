@@ -47,4 +47,13 @@ module Cartesian where
 open Cartesian public
 {-# REWRITE Cartesian #-}
 
+-- Relations and functions don't have intrinsic domain/codomains.
+isRel : 𝕍 -> Prop
+isRel R = ∀ x -> x ∈ R -> ∃[ u ∈ 𝕍 ] ∃[ v ∈ 𝕍 ] x ≗ ⟪ u , v ⟫
 
+_⦅_⦆_ : 𝕍 -> 𝕍 -> 𝕍 -> Prop
+x ⦅ R ⦆ y = ⟪ x , y ⟫ ∈ R
+
+Id-isRel : isRel (Id x)
+Id-isRel .(⟪ w , w ⟫) (exists w [ w∈x , refl𝕍 ])
+    = exists w (exists w refl𝕍)

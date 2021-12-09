@@ -437,6 +437,10 @@ module Kuratowski where
         ⟪u,v⟫∈𝒫𝒫x∪y u∈x v∈y (ι₂ refl𝕍) (ι₂ refl𝕍) = ι₂ v∈y
 open Kuratowski public
 
+-- We can also form the diagonal set, or the identity function.
+Id : 𝕍 -> 𝕍
+Id y = Image (\ x -> ⟪ x , x ⟫) y
+
 -- Regularity
 postulate
     Regularity : ∀ {a} -> (∀ x -> x ∈ a -> ∃[ y ∈ 𝕍 ] y ∈ a ∧ y ∈ x) -> a ≡ ∅
@@ -542,4 +546,3 @@ count-ord n _ = injective-ord _ _ (ord-count _ _)
 
 -- The axiom of choice needs more machinery to state.
 -- Therefore, we postpone it.
--- -} 
