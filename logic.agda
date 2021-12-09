@@ -5,7 +5,7 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Agda.Primitive
 
-variable
+private variable
     ℓ ℓ₁ ℓ₂ ℓ₃ ℓ₄ ℓ₅ ℓ₆ ℓ₇ ℓ₈ ℓ' ℓ'' : Level
 id : ∀ {A : Set ℓ} -> A -> A
 id a = a

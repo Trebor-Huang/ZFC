@@ -13,8 +13,9 @@ postulate
 {-# INJECTIVE _∈_ #-}
 infix 20 _∈_
 
-variable
-    x y z w : 𝕍  -- These will range in sets unless noted otherwise.
+private variable
+    ℓ ℓ₁ ℓ₂ ℓ₃ ℓ₄ ℓ₅ ℓ₆ ℓ₇ ℓ₈ ℓ' ℓ'' : Level
+    x y z w : 𝕍  -- These will range over sets unless noted otherwise.
 
 -- A propositional equality for convenience.
 -- We avoid the use of this as much as possible.
@@ -44,7 +45,7 @@ x ≟ y with truth (x ≗ y)
 ... | inj₂ neq = inj₂ \ { refl -> magic (≡-false neq refl𝕍) }
 
 -- We postulate the existence of an empty set, i.e. a set with no elements
--- This is actually redundant from the other axioms, but we keep it from
+-- This is actually redundant from the other axioms, but we keep it for
 -- aesthetic considerations.
 postulate
     ∅ : 𝕍
@@ -158,7 +159,7 @@ postulate
 ⋃𝟚≡𝟙 = ⋃-𝒫
 
 -- Since Agda wants the syntax { } and ⦃ ⦄ very much, we will avoid this.
--- Instead, we use ⟦ ⟧ as set builders
+-- Instead, we use ⟦ ⟧ as set builders.
 postulate
     Comprehension : (x : 𝕍) -> (P : 𝕍 -> Prop) -> 𝕍
     Specification : (P : 𝕍 -> Prop)
@@ -218,7 +219,7 @@ postulate
 {-# REWRITE Replacement #-}
 
 -- Now we can *really* start to make sets.
--- For starters, we prove Pairing, i.e. {a, b} is a set
+-- For a start, we prove Pairing, i.e. {a, b} is a set
 -- We first need to get a predicate to replace.
 private  -- Start a private block since we don't want to contaminate the namespace
     Pair : 𝕍 -> 𝕍 -> 𝕍 -> 𝕍 -> Prop
@@ -342,6 +343,7 @@ singleton-pair {x} = Extensional \ z -> equiv-equal
 module Kuratowski where
     abstract
         -- Then, we can have Kuratowski pairs.
+        -- This construction cleverly avoids the need for Regularity.
         ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
         ⟪ x , y ⟫ = ⟨ ⟦ x ⟧ , ⟨ x , y ⟩ ⟩
 
