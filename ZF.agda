@@ -339,35 +339,37 @@ singleton-pair : ⟦ x ⟧ ≡ ⟨ x , x ⟩
 singleton-pair {x} = Extensional \ z -> equiv-equal
     (solve 1 (\ P -> P <=> P ||| P) (z ≗ x))
 
--- Then, we can have Kuratowski pairs.
-⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
-⟪ x , y ⟫ = ⟨ ⟦ x ⟧ , ⟨ x , y ⟩ ⟩
+module Kuratowski where
+    abstract
+        -- Then, we can have Kuratowski pairs.
+        ⟪_,_⟫ : 𝕍 -> 𝕍 -> 𝕍
+        ⟪ x , y ⟫ = ⟨ ⟦ x ⟧ , ⟨ x , y ⟩ ⟩
 
--- We can prove that Kuratowski pairs are indeed ordered.
--- A lemma first
-private
-    Pair-zig : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , z ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , w ⟩)
-        -> (x ≡ z) * (y ≡ w)
-    Pair-zig x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
-    ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
-    ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
-    ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
-    ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
+        -- We can prove that Kuratowski pairs are indeed ordered.
+        -- A lemma first
+        private
+            Pair-zig : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , z ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , w ⟩)
+                -> (x ≡ z) * (y ≡ w)
+            Pair-zig x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
+            ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
 
-    Pair-zag : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , w ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , z ⟩)
-        -> (x ≡ z) * (y ≡ w)
-    Pair-zag x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
-    ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
-    ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
-    ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
-    ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
+            Pair-zag : ∀ x y z w -> (⟨ x , x ⟩ ≡ ⟨ z , w ⟩) * (⟨ x , y ⟩ ≡ ⟨ z , z ⟩)
+                -> (x ≡ z) * (y ≡ w)
+            Pair-zag x y z w (eq₁ , eq₂) with Pair-equal eq₁ | Pair-equal eq₂
+            ... | inj₁ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₁ (refl , refl) | inj₂ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₁ (refl , refl) = refl , refl
+            ... | inj₂ (refl , refl) | inj₂ (refl , refl) = refl , refl
 
-Pair-ordered : ⟪ x , y ⟫ ≡ ⟪ z , w ⟫ -> (x ≡ z) * (y ≡ w)
-Pair-ordered {x} {y} {z} {w} eq
-    rewrite singleton-pair {x} rewrite singleton-pair {z}
-    with Pair-equal eq
-... | inj₁ eq₁ = Pair-zig x y z w eq₁
-... | inj₂ eq₂ = Pair-zag x y z w eq₂
+        Pair-ordered : ⟪ x , y ⟫ ≡ ⟪ z , w ⟫ -> (x ≡ z) * (y ≡ w)
+        Pair-ordered {x} {y} {z} {w} eq
+            rewrite singleton-pair {x} rewrite singleton-pair {z}
+            with Pair-equal eq
+        ... | inj₁ eq₁ = Pair-zig x y z w eq₁
+        ... | inj₂ eq₂ = Pair-zag x y z w eq₂
 
 -- Now we can form pairwise unions and intersections.
 module Pairwise-Union where
