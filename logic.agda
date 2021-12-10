@@ -44,7 +44,14 @@ data ExistsUnique (A : Set ℓ) (P : A -> Prop ℓ') : Prop (ℓ ⊔ ℓ') where
     exists-unique : (a : A) -> (∀ b -> P b -> b ≡ a) -> ExistsUnique A P
 syntax ExistsUnique A (\x -> P) = ∃![ x ∈ A ] P
 
-infixr 7 Exists ExistsUnique choice  -- choice is a similar syntax defined later
+record Sum (A : Set ℓ) (B : A -> Prop ℓ') : Set (ℓ ⊔ ℓ') where
+    constructor fiber
+    field
+        witness : A
+        proof : B witness
+syntax Sum A (\x -> P) = Σ[ x ∈ A ] P
+
+infixr 7 Exists ExistsUnique Sum choice  -- choice is a similar syntax defined later
 
 data ⊥ {ℓ} : Prop ℓ where
 ex-falso : {P : Prop ℓ'} -> ⊥ {ℓ} -> P

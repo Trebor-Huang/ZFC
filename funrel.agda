@@ -54,6 +54,16 @@ isRel R = ∀ x -> x ∈ R -> ∃[ u ∈ 𝕍 ] ∃[ v ∈ 𝕍 ] x ≗ ⟪ u , 
 _⦅_⦆_ : 𝕍 -> 𝕍 -> 𝕍 -> Prop
 x ⦅ R ⦆ y = ⟪ x , y ⟫ ∈ R
 
+-- The identity relation is a relation.
 Id-isRel : isRel (Id x)
 Id-isRel .(⟪ w , w ⟫) (exists w [ w∈x , refl𝕍 ])
     = exists w (exists w refl𝕍)
+
+module Relation where
+    -- We provide a relation space with domain and range.
+    REL : 𝕍 -> 𝕍 -> 𝕍
+    REL x y = 𝒫 (x × y)
+
+isFun : 𝕍 -> Prop
+isFun R = isRel R ∧
+    (∀ x -> ∃[ y ∈ 𝕍 ] ⟪ x , y ⟫ ∈ R -> ∃![ y ∈ 𝕍 ] ⟪ x , y ⟫ ∈ R )
